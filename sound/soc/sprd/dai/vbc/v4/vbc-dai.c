@@ -2640,6 +2640,12 @@ static int scene_fast_hw_params(struct snd_pcm_substream *substream,
 	if (hw_param_get_ref(scene_id, stream) == 1) {
 		dsp_hw_params(vbc_codec, scene_id, stream,
 			      chan_cnt, rate, data_fmt);
+		/*
+		 * EEBBK A3: the FE PCM trigger path can miss the BE fast scene.
+		 * Start the DSP scene as soon as the BE has valid hw_params.
+		 */
+		if (!vbc_dsp_func_trigger(scene_id, stream, 1))
+			pr_info("%s DSP scene started\n", __func__);
 	}
 	hw_param_unlock_mtx(scene_id, stream);
 
@@ -2665,6 +2671,9 @@ static int scene_fast_hw_free(struct snd_pcm_substream *substream,
 	hw_param_lock_mtx(scene_id, stream);
 	hw_param_dec_ref(scene_id, stream);
 	hw_param_unlock_mtx(scene_id, stream);
+
+	/* EEBBK A3: pair the hw_params DSP start above. */
+	vbc_dsp_func_trigger(scene_id, stream, 0);
 
 	return 0;
 }

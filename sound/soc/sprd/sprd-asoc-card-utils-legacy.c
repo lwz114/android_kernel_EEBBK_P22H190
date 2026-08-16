@@ -314,6 +314,7 @@ static int board_func_set(struct snd_kcontrol *kcontrol,
 	    (struct soc_mixer_control *)kcontrol->private_value;
 	struct snd_soc_card *card = snd_kcontrol_chip(kcontrol);
 	int id = FUN_REG(mc->reg);
+	int ret;
 
 	sp_asoc_pr_info("%s Switch %s\n", func_name[id],
 			STR_ON_OFF(ucontrol->value.integer.value[0]));
@@ -322,6 +323,13 @@ static int board_func_set(struct snd_kcontrol *kcontrol,
 		return 0;
 
 	board.func_switch[id] = ucontrol->value.integer.value[0];
+	if (ext_hook && ext_hook->direct_ctrl[id]) {
+		ret = SAFE_CALL(ext_hook->direct_ctrl[id], id,
+				board.func_switch[id]);
+		if (ret < 0)
+			pr_err("ERR:Call direct external control failed %d!\n",
+			       ret);
+	}
 	board_ext_pin_control(&card->dapm, id, id + 1);
 
 	return 1;
@@ -540,4 +548,3 @@ void sprd_asoc_shutdown(struct platform_device *pdev)
 	board_ext_pin_control(&card->dapm, 0, BOARD_FUNC_MAX);
 }
 EXPORT_SYMBOL(sprd_asoc_shutdown);
-

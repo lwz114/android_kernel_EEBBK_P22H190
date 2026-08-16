@@ -1300,6 +1300,7 @@ static int sprd_fe_dai_dev_remove(struct platform_device *pdev)
 
 static const struct of_device_id sprd_dai_fe_dt_match[] = {
 	{.compatible = "sprd,fe-dai"},
+	{},
 };
 
 static struct platform_driver sprd_fe_dai_driver = {
@@ -1328,4 +1329,3 @@ late_initcall(sprd_fe_dai_driver_init);
 MODULE_DESCRIPTION("SPRD ASoC FRONT END CPU DAI");
 MODULE_AUTHOR("Lei Ning <lei.ning@unisoc.com>");
 MODULE_LICENSE("GPL");
-

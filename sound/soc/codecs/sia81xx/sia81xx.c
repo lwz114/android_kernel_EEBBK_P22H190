@@ -2513,4 +2513,3 @@ module_exit(sia81xx_pa_exit);
 MODULE_AUTHOR("yun shi <yun.shi@si-in.com>");
 MODULE_DESCRIPTION("SI-IN SIA81xx ASoC driver");
 MODULE_LICENSE("GPL");
-

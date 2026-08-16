@@ -26,6 +26,8 @@ struct sprd_asoc_ext_hook_map {
 	const char *name;
 	sprd_asoc_hook_func hook;
 	int en_level;
+	bool need_gpio;
+	bool direct_ctrl;
 };
 
 enum {
@@ -51,6 +53,17 @@ static struct sprd_asoc_hook_spk_priv hook_spk_priv;
 #define GENERAL_SPK_MODE 10
 
 #define EN_LEVEL 1
+
+#define AW87XXX_LEFT_DEV_INDEX 0
+#define AW87XXX_RIGHT_DEV_INDEX 1
+
+static char aw87xxx_music_profile[] = "Music";
+static char aw87xxx_receiver_profile[] = "Receiver";
+static char aw87xxx_off_profile[] = "Off";
+
+#if IS_REACHABLE(CONFIG_SND_SOC_AW87XXX)
+extern int aw87xxx_set_profile(int dev_index, char *profile);
+#endif
 
 static int select_mode;
 
@@ -162,8 +175,54 @@ static int hook_general_spk(int id, int on)
 	return HOOK_OK;
 }
 
+static int hook_aw87xxx_set(int dev_index, char *profile)
+{
+#if IS_REACHABLE(CONFIG_SND_SOC_AW87XXX)
+	int ret;
+
+	ret = aw87xxx_set_profile(dev_index, profile);
+	if (ret < 0)
+		pr_err("%s dev_index %d profile %s failed: %d\n",
+		       __func__, dev_index, profile, ret);
+
+	return ret;
+#else
+	pr_info("%s AW87xxx support disabled\n", __func__);
+	return -ENODEV;
+#endif
+}
+
+static int hook_aw87xxx_smart_spk(int id, int on)
+{
+	char *profile = on ? aw87xxx_music_profile : aw87xxx_off_profile;
+	int ret0 = 0, ret1 = 0;
+
+	if (id == BOARD_FUNC_EAR)
+		profile = on ? aw87xxx_receiver_profile : aw87xxx_off_profile;
+
+	pr_info("%s id: %d, profile: %s, on: %d\n",
+		__func__, id, profile, on);
+
+	if (id == BOARD_FUNC_SPK) {
+		ret0 = hook_aw87xxx_set(AW87XXX_LEFT_DEV_INDEX, profile);
+		ret1 = hook_aw87xxx_set(AW87XXX_RIGHT_DEV_INDEX, profile);
+	} else if (id == BOARD_FUNC_SPK1) {
+		ret1 = hook_aw87xxx_set(AW87XXX_RIGHT_DEV_INDEX, profile);
+	} else if (id == BOARD_FUNC_EAR) {
+		ret0 = hook_aw87xxx_set(AW87XXX_LEFT_DEV_INDEX, profile);
+	} else {
+		return HOOK_BPY;
+	}
+
+	if (ret0 < 0 && ret1 < 0)
+		return ret0;
+
+	return HOOK_OK;
+}
+
 static struct sprd_asoc_ext_hook_map ext_hook_arr[] = {
-	{"general_speaker", hook_general_spk, EN_LEVEL},
+	{"general_speaker", hook_general_spk, EN_LEVEL, true, false},
+	{"aw87xxx_smart_speaker", hook_aw87xxx_smart_spk, EN_LEVEL, false, true},
 };
 
 static int sprd_asoc_card_parse_hook(struct device *dev,
@@ -229,6 +288,9 @@ static int sprd_asoc_card_parse_hook(struct device *dev,
 			return -EINVAL;
 		}
 		ext_hook->ext_ctrl[ext_ctrl_type] = ext_hook_arr[hook_sel].hook;
+		if (ext_hook_arr[hook_sel].direct_ctrl)
+			ext_hook->direct_ctrl[ext_ctrl_type] =
+				ext_hook_arr[hook_sel].hook;
 
 		/* Get the private data */
 		priv_data = buf[CELL_PRIV + num];
@@ -245,6 +307,13 @@ static int sprd_asoc_card_parse_hook(struct device *dev,
 			}
 			hook_spk_priv.gpio[ext_ctrl_type] =
 				hook_spk_priv.gpio[share_gpio - 1];
+			continue;
+		}
+
+		if (!ext_hook_arr[hook_sel].need_gpio) {
+			hook_spk_priv.gpio[ext_ctrl_type] = -EINVAL;
+			pr_info("ext_ctrl_type %d hook_sel %d does not need gpio",
+				ext_ctrl_type, hook_sel);
 			continue;
 		}
 

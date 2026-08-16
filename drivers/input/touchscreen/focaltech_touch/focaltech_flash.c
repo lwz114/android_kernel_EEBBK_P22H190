@@ -59,6 +59,17 @@ extern char Ctp_name[HARDWARE_MAX_ITEM_LONGTH];
 *****************************************************************************/
 extern int ft8006saa;
 
+/*
+ * This tree is missing the vendor .i firmware blobs.  When request_firmware()
+ * support is enabled, keep the built-in fallback empty so the driver still
+ * builds and uses the firmware files from /vendor/firmware at runtime.
+ */
+#if FTS_FW_REQUEST_SUPPORT
+u8 fw_file[] = { 0 };
+u8 fw_file2[] = { 0 };
+u8 fw_file3[] = { 0 };
+u8 fw_f8722_file[] = { 0 };
+#else
 u8 fw_file[] = {
 #include FTS_UPGRADE_FW_FILE
 };
@@ -74,6 +85,7 @@ u8 fw_file3[] = {
 u8 fw_f8722_file[] = {
 #include FTS8722_UPGRADE_FW_FILE
 };
+#endif
 
 
 struct upgrade_module module_list[] = {

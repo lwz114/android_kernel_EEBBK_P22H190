@@ -49,6 +49,7 @@ typedef int (*sprd_asoc_hook_func)(int id, int on);
 
 struct sprd_asoc_ext_hook {
 	sprd_asoc_hook_func ext_ctrl[BOARD_FUNC_MAX];
+	sprd_asoc_hook_func direct_ctrl[BOARD_FUNC_MAX];
 };
 
 struct sprd_array_size {
