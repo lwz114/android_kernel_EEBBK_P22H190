@@ -113,7 +113,7 @@ int  bluesleep_init(void)
 	}
 
 	/* Creating read/write  entry */
-	ent = proc_create("btwrite", S_IRUGO | S_IWUSR | S_IWGRP, sleep_dir,
+	ent = proc_create("btwrite", S_IRUGO | S_IWUGO, sleep_dir,
 		&lpm_proc_btwrite_fops); /*read/write */
 	if (ent == NULL) {
 		dev_unisoc_bt_info(ttyBT_dev,
@@ -148,5 +148,4 @@ void  bluesleep_exit(void)
 /*module_exit(bluesleep_exit);*/
 MODULE_DESCRIPTION("Bluetooth Sleep Mode Driver ver %s " VERSION);
 MODULE_LICENSE("GPL");
-
 

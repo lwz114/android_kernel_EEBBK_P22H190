@@ -590,6 +590,7 @@ static int mtty_open(struct tty_struct *tty, struct file *filp)
 {
     struct mtty_device *mtty = NULL;
     struct tty_driver *driver = NULL;
+    int ret;
 
     data_dump = (bt_host_data_dump* )vmalloc(sizeof(bt_host_data_dump));
     memset(data_dump, 0 , sizeof(bt_host_data_dump));
@@ -613,6 +614,20 @@ static int mtty_open(struct tty_struct *tty, struct file *filp)
     atomic_set(&mtty->state, MTTY_STATE_OPEN);
     que_task = 0;
     que_sche = 0;
+
+    /*
+     * GSI userspace often lacks the vendor ueventd rule that lets the
+     * bluetooth HAL toggle rfkill and /proc/bluetooth/sleep/btwrite.
+     * Power and wake the controller here so HCI setup does not depend on
+     * those writable nodes being present.
+     */
+    ret = start_marlin(MARLIN_BLUETOOTH);
+    if (ret)
+        dev_unisoc_bt_err(ttyBT_dev,
+                          "mtty_open start_marlin failed: %d\n",
+                          ret);
+    host_wakeup_bt();
+
     sitm_ini();
 	if (wcn_hw_type == HW_TYPE_PCIE) {
 		sprdwcn_bus_chn_init(&bt_pcie_rx_ops);
@@ -671,6 +686,7 @@ static int mtty_sdio_write(struct tty_struct *tty,
     if (is_user_debug) {
         bt_host_data_save(buf, count, BT_DATA_OUT);
     }
+    host_wakeup_bt();
     /*{
         dev_unisoc_bt_info(ttyBT_dev,
                            "%s dump size: %d\n",
@@ -728,6 +744,7 @@ static int mtty_pcie_write(struct tty_struct *tty,
 	struct mbuf_t *tx_head = NULL;
 	struct mbuf_t *tx_tail = NULL;
 
+	host_wakeup_bt();
 	down(&sem_id);
 	if (!sprdwcn_bus_list_alloc(BT_PCIE_TX_CHANNEL, &tx_head, &tx_tail, &num)) {
 		int ret = 0;
