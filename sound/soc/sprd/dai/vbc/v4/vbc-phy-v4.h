@@ -1442,6 +1442,7 @@ struct vbc_codec_priv {
 	struct mainmic_from_para mainmic_from[MAINMIC_USED_MAINMIC_TYPE_MAX];
 	struct vbc_iis_mst_sel_para mst_sel_para[IIS_MST_SEL_ID_MAX];
 	enum VBC_DMIC_SEL_E dmic_chn_sel;
+	u32 special_adc_id_sel;
 	/* to do */
 	atomic_t aux_iis_master_start;
 	int32_t ivs_smtpa_ctl_enable;

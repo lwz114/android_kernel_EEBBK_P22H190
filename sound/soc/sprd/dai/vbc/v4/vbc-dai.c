@@ -850,6 +850,41 @@ static int16_t get_startup_master_reload(void)
 	return 1;
 }
 
+static bool a3_primary_capture_scene(int scene_id, int stream)
+{
+	if (stream != SNDRV_PCM_STREAM_CAPTURE)
+		return false;
+
+	return scene_id == VBC_DAI_ID_NORMAL_AP01 ||
+		scene_id == VBC_DAI_ID_NORMAL_AP23;
+}
+
+static void a3_fix_primary_capture_route(struct vbc_codec_priv *vbc_codec,
+					  int scene_id, int stream)
+{
+	if (!a3_primary_capture_scene(scene_id, stream))
+		return;
+
+	/*
+	 * EEBBK A3: generic GSI mixer paths can switch primary recording to
+	 * IIS2/RIGHT_HIGH, which starts the DSP capture scene but records
+	 * silence.  Keep this limited to normal AP capture; vendor DSP
+	 * capture routes are managed by the HAL and must not be overridden.
+	 */
+	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC0].id = VBC_MUX_IIS_RX_ADC0;
+	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC0].val = VBC_IIS_PORT_IIS1;
+	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC1].id = VBC_MUX_IIS_RX_ADC1;
+	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC1].val = VBC_IIS_PORT_IIS1;
+	vbc_codec->iis_rx_lr_mod[VBC_MUX_IIS_RX_ADC0].id = VBC_MUX_IIS_RX_ADC0;
+	vbc_codec->iis_rx_lr_mod[VBC_MUX_IIS_RX_ADC0].value = LEFT_HIGH;
+	vbc_codec->iis_rx_lr_mod[VBC_MUX_IIS_RX_ADC1].id = VBC_MUX_IIS_RX_ADC1;
+	vbc_codec->iis_rx_lr_mod[VBC_MUX_IIS_RX_ADC1].value = LEFT_HIGH;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].id = VBC_MUX_IN_ADC0;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].val = ADC_IN_IIS0_ADC;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC1].id = VBC_MUX_IN_ADC1;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC1].val = ADC_IN_IIS0_ADC;
+}
+
 static void fill_dsp_startup_data(struct vbc_codec_priv *vbc_codec,
 	int scene_id, int stream,
 	struct sprd_vbc_stream_startup_shutdown *startup_info)
@@ -864,6 +899,7 @@ static void fill_dsp_startup_data(struct vbc_codec_priv *vbc_codec,
 	info->stream = stream;
 	para->dac_id = get_startup_scene_dac_id(scene_id);
 	para->adc_id = get_startup_scene_adc_id(scene_id);
+	a3_fix_primary_capture_route(vbc_codec, scene_id, stream);
 
 	pr_debug("adc_id %d, dmic_chn_sel %d\n", para->adc_id,
 		 vbc_codec->dmic_chn_sel);

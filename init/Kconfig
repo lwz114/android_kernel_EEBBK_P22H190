@@ -888,6 +888,20 @@ config CGROUP_FREEZER
 
 	  If you're using cgroup2, say N.
 
+config CGROUP_WORKINGSET
+	bool "BBK workingset controller compatibility"
+	help
+	  Provides the legacy "workingset" cgroup mount and the
+	  workingset.state/workingset.data files expected by EEBBK/BBK
+	  Android userspace.
+
+config CGROUP_IOLIMIT
+	bool "BBK iolimit controller compatibility"
+	help
+	  Provides the legacy "iolimit" cgroup mount and read_limit,
+	  write_limit, and switching files expected by EEBBK/BBK
+	  Android userspace.
+
 config CGROUP_HUGETLB
 	bool "HugeTLB controller"
 	depends on HUGETLB_PAGE
@@ -972,6 +986,14 @@ config SOCK_CGROUP_DATA
 	default n
 
 endif # CGROUPS
+
+config BBK_VIP_THREAD
+	bool "BBK static_vip proc thread compatibility"
+	depends on PROC_FS
+	help
+	  Provides a writable /proc/<pid>/task/<tid>/static_vip file for
+	  EEBBK/BBK performance services. This compatibility implementation
+	  accepts userspace writes without changing scheduler behavior.
 
 config CHECKPOINT_RESTORE
 	bool "Checkpoint/restore support" if EXPERT

@@ -2429,6 +2429,47 @@ static const struct file_operations proc_pid_set_timerslack_ns_operations = {
 	.release	= single_release,
 };
 
+#ifdef CONFIG_BBK_VIP_THREAD
+static ssize_t static_vip_write(struct file *file, const char __user *buf,
+				size_t count, loff_t *ppos)
+{
+	struct task_struct *task;
+
+	task = get_proc_task(file_inode(file));
+	if (!task)
+		return -ESRCH;
+
+	put_task_struct(task);
+	return count;
+}
+
+static int static_vip_show(struct seq_file *m, void *v)
+{
+	struct task_struct *task;
+
+	task = get_proc_task(m->private);
+	if (!task)
+		return -ESRCH;
+
+	put_task_struct(task);
+	seq_puts(m, "0\n");
+	return 0;
+}
+
+static int static_vip_open(struct inode *inode, struct file *filp)
+{
+	return single_open(filp, static_vip_show, inode);
+}
+
+static const struct file_operations proc_tid_static_vip_operations = {
+	.open		= static_vip_open,
+	.read		= seq_read,
+	.write		= static_vip_write,
+	.llseek		= seq_lseek,
+	.release	= single_release,
+};
+#endif
+
 static int proc_pident_instantiate(struct inode *dir,
 	struct dentry *dentry, struct task_struct *task, const void *ptr)
 {
@@ -3434,6 +3475,9 @@ static const struct pid_entry tid_base_stuff[] = {
 #endif
 #ifdef CONFIG_PROTECT_LRU
 	REG("protect_level", 0666, proc_protect_level_operations),
+#endif
+#ifdef CONFIG_BBK_VIP_THREAD
+	REG("static_vip", S_IRUGO|S_IWUGO, proc_tid_static_vip_operations),
 #endif
 };
 

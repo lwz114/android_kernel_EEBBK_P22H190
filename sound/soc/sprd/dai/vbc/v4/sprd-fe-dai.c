@@ -180,10 +180,16 @@ static int mcdt_dma_config_init(struct snd_soc_dai *fe_dai, int stream)
 		uid = 0;
 		break;
 	case FE_DAI_ID_CAPTURE_DSP:
-		uid = mcdt_adc_dma_enable(MCDT_CHAN_DSP_CAP,
-			MCDT_FULL_WMK_DSP_CAP);
-		pcm_dsp_cap_mcdt.channels[0] = uid;
-		break;
+		/*
+		 * EEBBK A3: the vendor Horizon input HAL opens FE_ST_CAPTURE_DSP
+		 * during AudioPolicy init.  On this kernel/DSP pairing the stream
+		 * opens successfully but never produces periods, leaving the HAL
+		 * stuck in pcm_wait() while AudioPolicy waits in closeInputStream().
+		 * Fail this hotword/DSP capture FE fast so AudioPolicy can skip it;
+		 * normal microphone capture still uses NORMAL_AP01/AP23.
+		 */
+		pr_warn("%s: disable FE_DAI_ID_CAPTURE_DSP on A3\n", __func__);
+		return -ENODEV;
 	case FE_DAI_ID_FM_CAP_DSP:
 		uid = mcdt_adc_dma_enable(MCDT_CHAN_DSP_FM_CAP,
 			MCDT_FULL_WMK_DSP_FM_CAP);
