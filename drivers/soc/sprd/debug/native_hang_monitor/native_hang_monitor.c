@@ -614,17 +614,20 @@ static int hang_detect_thread(void *arg)
 #endif
 				log_to_hang_info("[Native Hang detect]Dump process bt.\n");
 #ifndef CONFIG_SPRD_DEBUG
-				save_native_hang_monitor_data();
+				/*
+				 * This vendor diagnostic path walks dying userspace tasks and
+				 * mm/stack state while system_server or surfaceflinger is already
+				 * restarting. On A3 stock userspace it can fault in the monitor
+				 * itself and reboot the device before the real boot issue is visible.
+				 * Keep the timeout visible, but do not let the monitor create a
+				 * secondary kernel panic on custom builds.
+				 */
 				pr_err("[Native Native Hang Detect] hang_detect_counter:%d, ",
 					atomic_read(&hang_detect_counter));
-				pr_err("hang detect save data finish ......\n");
-				pr_err("[Native Native Hang Detect] hang_detect_counter:%d, ",
-					atomic_read(&hang_detect_counter));
-				pr_err("we should trigger panic...\n");
-				msleep(40 * 1000); /*	wait for wdh  */
-				/* check hang_detect_counter before panic */
-				if (atomic_add_negative(0, &hang_detect_counter))
-					panic("Native hang monitor trigger");
+				pr_err("native hang monitor timeout, skip unsafe dump/panic.\n");
+				atomic_set(&hang_detect_counter, hang_detect_timeout);
+				msleep(1000);
+				continue;
 #endif
 			}
 			atomic_dec(&hang_detect_counter);

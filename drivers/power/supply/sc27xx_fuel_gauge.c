@@ -230,6 +230,7 @@ static int cal_bat_id(struct sc27xx_fgu_data *data)
 {
 	int i, err, vol;
 	bool flag = false;
+	struct device_node *battery_np, *next_battery_np;
 
 	err = iio_read_channel_processed(data->bat_id_cha, &vol);
 	if (err < 0) {
@@ -258,6 +259,24 @@ fail0:
 	if (flag)
 		return 0;
 
+	/*
+	 * Some boards only provide one monitored-battery entry and use a bat-id
+	 * voltage outside the shared vendor table. Treat that as the default
+	 * battery instead of reporting BAT_COUNT, otherwise charger-manager marks
+	 * the pack as poor contact and disables charging.
+	 */
+	battery_np = of_parse_phandle(data->dev->of_node, "monitored-battery", 0);
+	next_battery_np = of_parse_phandle(data->dev->of_node, "monitored-battery", 1);
+	if (battery_np && !next_battery_np) {
+		g_bat_id = 0;
+		dev_err(data->dev, "[%s] bat-id vol=%d out of table, use default id = %d\n",
+			__func__, vol, g_bat_id);
+		of_node_put(battery_np);
+		return 0;
+	}
+	of_node_put(battery_np);
+	of_node_put(next_battery_np);
+
 	g_bat_id = BAT_COUNT;
 	dev_err(data->dev, "[%s] g_bat_id = %d\n", __func__, g_bat_id);
 
@@ -269,7 +288,7 @@ int get_now_battery_id(void)
 	int ret;
 
 	if (!g_fgu_data) {
-		dev_err(g_fgu_data->dev, "[%s] wait fgu init ok\n", __func__);
+		pr_err("[%s] wait fgu init ok\n", __func__);
 		return 0;
 	}
 
@@ -1765,6 +1784,8 @@ static int sc27xx_fgu_probe(struct platform_device *pdev)
 	if (!data)
 		return -ENOMEM;
 
+	data->dev = &pdev->dev;
+
 	pdata = of_device_get_match_data(&pdev->dev);
 	if (!pdata) {
 		dev_err(&pdev->dev, "no matching driver data found\n");
@@ -1855,7 +1876,6 @@ static int sc27xx_fgu_probe(struct platform_device *pdev)
 
 	data->bat_present = !!ret;
 	mutex_init(&data->lock);
-	data->dev = &pdev->dev;
 	platform_set_drvdata(pdev, data);
 
 	g_fgu_data = data;
