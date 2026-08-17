@@ -57,6 +57,8 @@
 #define AW87XXX_I2C_NAME	"aw87xxx_pa"
 #define AW87XXX_DRIVER_VERSION	"v2.3.0"
 #define AW87XXX_FW_BIN_NAME	"aw87xxx_acf.bin"
+#define AW87XXX_PID76_OFF_DELAY_MS	(5 * 60 * 1000)
+#define AW87XXX_PREHEAT_PROFILE	"Music"
 
 /*************************************************************************
  * aw87xxx variable
@@ -189,16 +191,64 @@ static int aw87xxx_power_on(struct aw87xxx *aw87xxx, char *profile)
 	return 0;
 }
 
+static void aw87xxx_pid76_cancel_off(struct aw87xxx *aw87xxx)
+{
+	if (aw87xxx->pid76_off_work_init) {
+		cancel_delayed_work_sync(&aw87xxx->pid76_off_work);
+		aw87xxx->pid76_off_pending = false;
+	}
+}
 
+static void aw87xxx_pid76_off_work(struct work_struct *work)
+{
+	struct aw87xxx *aw87xxx = container_of(to_delayed_work(work),
+					       struct aw87xxx, pid76_off_work);
+
+	mutex_lock(&aw87xxx->reg_lock);
+	aw87xxx->pid76_off_pending = false;
+	aw_monitor_stop(&aw87xxx->monitor);
+	aw87xxx_power_down(aw87xxx, aw87xxx->prof_off_name);
+	mutex_unlock(&aw87xxx->reg_lock);
+}
 
 int aw87xxx_update_profile(struct aw87xxx *aw87xxx, char *profile)
 {
 	int ret = -1;
+	bool is_off;
+	bool is_pid76;
+
+	if (!profile)
+		return -EINVAL;
+
+	is_off = !strncmp(profile, aw87xxx->prof_off_name, AW_PROFILE_STR_MAX);
+	is_pid76 = aw87xxx->aw_dev.chipid == AW_DEV_CHIPID_76;
+
+	if (!is_off && is_pid76)
+		aw87xxx_pid76_cancel_off(aw87xxx);
 
 	mutex_lock(&aw87xxx->reg_lock);
+
+	if (!strncmp(profile, aw87xxx->current_profile, AW_PROFILE_STR_MAX)) {
+		AW_DEV_LOGI(aw87xxx->dev, "profile[%s] already active, skip", profile);
+		if (!is_off)
+			aw_monitor_start(&aw87xxx->monitor);
+		mutex_unlock(&aw87xxx->reg_lock);
+		return 0;
+	}
+
 	aw_monitor_stop(&aw87xxx->monitor);
-	if (0 == strncmp(profile, aw87xxx->prof_off_name, AW_PROFILE_STR_MAX)) {
-		ret = aw87xxx_power_down(aw87xxx, profile);
+	if (is_off) {
+		if (is_pid76 && aw87xxx->pid76_off_work_init) {
+			aw87xxx->pid76_off_pending = true;
+			schedule_delayed_work(&aw87xxx->pid76_off_work,
+				msecs_to_jiffies(AW87XXX_PID76_OFF_DELAY_MS));
+			AW_DEV_LOGI(aw87xxx->dev,
+				"delay pid76 profile[Off] for %d ms",
+				AW87XXX_PID76_OFF_DELAY_MS);
+			ret = 0;
+		} else {
+			ret = aw87xxx_power_down(aw87xxx, profile);
+		}
 	} else {
 		ret = aw87xxx_power_on(aw87xxx, profile);
 		aw_monitor_start(&aw87xxx->monitor);
@@ -601,6 +651,18 @@ static void aw87xxx_fw_load(const struct firmware *fw, void *context)
 	if (ret < 0) {
 		aw87xxx_fw_cfg_free(aw87xxx);
 		goto exit_acf_parse_failed;
+	}
+
+	if (aw87xxx->aw_dev.chipid == AW_DEV_CHIPID_76) {
+		ret = aw87xxx_power_on(aw87xxx, AW87XXX_PREHEAT_PROFILE);
+		if (ret < 0)
+			AW_DEV_LOGE(aw87xxx->dev,
+				"pid76 preheat profile[%s] failed: %d",
+				AW87XXX_PREHEAT_PROFILE, ret);
+		else
+			AW_DEV_LOGI(aw87xxx->dev,
+				"pid76 preheated profile[%s]",
+				AW87XXX_PREHEAT_PROFILE);
 	}
 
 	AW_DEV_LOGI(aw87xxx->dev, "acf parse succeed");
@@ -1148,6 +1210,8 @@ static struct aw87xxx *aw87xxx_malloc_init(struct i2c_client *client)
 	aw87xxx->codec = NULL;
 	aw87xxx->current_profile = aw87xxx->prof_off_name;
 
+	INIT_DELAYED_WORK(&aw87xxx->pid76_off_work, aw87xxx_pid76_off_work);
+	aw87xxx->pid76_off_work_init = true;
 	mutex_init(&aw87xxx->reg_lock);
 
 	AW_DEV_LOGI(&client->dev, "struct aw87xxx devm_kzalloc and init down");
@@ -1260,7 +1324,11 @@ static void aw87xxx_i2c_shutdown(struct i2c_client *client)
 	AW_DEV_LOGI(&client->dev, "enter");
 
 	/*soft and hw power off*/
-	aw87xxx_update_profile(aw87xxx, aw87xxx->prof_off_name);
+	aw87xxx_pid76_cancel_off(aw87xxx);
+	mutex_lock(&aw87xxx->reg_lock);
+	aw_monitor_stop(&aw87xxx->monitor);
+	aw87xxx_power_down(aw87xxx, aw87xxx->prof_off_name);
+	mutex_unlock(&aw87xxx->reg_lock);
 }
 
 

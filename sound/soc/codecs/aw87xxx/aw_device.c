@@ -23,6 +23,7 @@
 #include <linux/io.h>
 #include <linux/init.h>
 #include <linux/timer.h>
+#include <linux/workqueue.h>
 #include "aw87xxx.h"
 #include "aw_device.h"
 #include "aw_log.h"
@@ -77,6 +78,31 @@ const char *g_aw_pid_76_product[] = {
 };
 
 static int aw_dev_get_chipid(struct aw_device *aw_dev);
+
+#define AW_PID76_PA_ENABLE_DELAY_MS	25
+
+static void aw_dev_pid76_pa_enable_work(struct work_struct *work)
+{
+	struct aw_device *aw_dev = container_of(to_delayed_work(work),
+					       struct aw_device,
+					       pid76_pa_enable_work);
+	int ret;
+
+	ret = aw_dev_i2c_write_byte(aw_dev, AW87XXX_PID_76_SYSCTRL_REG,
+				    aw_dev->pid76_pa_enable_val);
+	if (ret < 0)
+		AW_DEV_LOGE(aw_dev->dev,
+			    "delayed pid76 pa enable failed, ret=%d", ret);
+	else
+		AW_DEV_LOGI(aw_dev->dev, "delayed pid76 pa enable val=0x%02x",
+			    aw_dev->pid76_pa_enable_val);
+}
+
+static void aw_dev_pid76_cancel_pa_enable(struct aw_device *aw_dev)
+{
+	if (aw_dev->pid76_pa_enable_work_init)
+		cancel_delayed_work_sync(&aw_dev->pid76_pa_enable_work);
+}
 
 /***************************************************************************
  *
@@ -207,6 +233,55 @@ static int aw_dev_reg_update(struct aw_device *aw_dev,
 				profile_data->data[i + 1]);
 		if (ret < 0)
 			return ret;
+	}
+
+	return 0;
+}
+
+static int aw_dev_pid76_reg_update_pop_safe(struct aw_device *aw_dev,
+			struct aw_data_container *profile_data)
+{
+	int i = 0;
+	int ret = -1;
+	bool delay_pa_enable = false;
+	uint8_t reg_addr;
+	uint8_t reg_val;
+
+	if (profile_data == NULL)
+		return -EINVAL;
+
+	if (aw_dev->hwen_status == AW_DEV_HWEN_OFF) {
+		AW_DEV_LOGE(aw_dev->dev, "dev is pwr_off,can not update reg");
+		return -EINVAL;
+	}
+
+	aw_dev_pid76_cancel_pa_enable(aw_dev);
+
+	for (i = 0; i < profile_data->len; i = i + 2) {
+		reg_addr = profile_data->data[i];
+		reg_val = profile_data->data[i + 1];
+
+		if (reg_addr == AW87XXX_PID_76_SYSCTRL_REG &&
+		    (reg_val & AW87XXX_PID_76_EN_PA_ENABLE_DEPENDS_ON_EN_AB_VALUE)) {
+			aw_dev->pid76_pa_enable_val = reg_val;
+			reg_val &= AW87XXX_PID_76_EN_PA_MASK;
+			delay_pa_enable = true;
+			AW_DEV_LOGI(aw_dev->dev,
+				    "defer pid76 pa enable, first val=0x%02x, final val=0x%02x",
+				    reg_val, aw_dev->pid76_pa_enable_val);
+		}
+
+		AW_DEV_LOGI(aw_dev->dev, "reg=0x%02x, val = 0x%02x",
+			reg_addr, reg_val);
+
+		ret = aw_dev_i2c_write_byte(aw_dev, reg_addr, reg_val);
+		if (ret < 0)
+			return ret;
+	}
+
+	if (delay_pa_enable) {
+		schedule_delayed_work(&aw_dev->pid76_pa_enable_work,
+			msecs_to_jiffies(AW_PID76_PA_ENABLE_DELAY_MS));
 	}
 
 	return 0;
@@ -377,6 +452,8 @@ int aw_dev_default_pwr_off(struct aw_device *aw_dev,
 	int ret = 0;
 
 	AW_DEV_LOGD(aw_dev->dev, "enter");
+	aw_dev_pid76_cancel_pa_enable(aw_dev);
+
 	if (aw_dev->hwen_status == AW_DEV_HWEN_OFF) {
 		AW_DEV_LOGE(aw_dev->dev, "hwen is already off");
 		return 0;
@@ -414,7 +491,10 @@ int aw_dev_default_pwr_on(struct aw_device *aw_dev,
 	/*hw power on*/
 	aw_dev_hw_pwr_ctrl(aw_dev, true);
 
-	ret = aw_dev_reg_update(aw_dev, profile_data);
+	if (aw_dev->chipid == AW_DEV_CHIPID_76)
+		ret = aw_dev_pid76_reg_update_pop_safe(aw_dev, profile_data);
+	else
+		ret = aw_dev_reg_update(aw_dev, profile_data);
 	if (ret < 0)
 		return ret;
 
@@ -834,6 +914,10 @@ static void aw_dev_chipid_76_init(struct aw_device *aw_dev)
 	/* esd reg info */
 	aw_dev->esd_desc.first_update_reg_addr = AW87XXX_PID_76_DFT_ADP1_REG;
 	aw_dev->esd_desc.first_update_reg_val = AW87XXX_PID_76_DFT_ADP1_CHECK;
+
+	INIT_DELAYED_WORK(&aw_dev->pid76_pa_enable_work,
+			  aw_dev_pid76_pa_enable_work);
+	aw_dev->pid76_pa_enable_work_init = true;
 }
 
 /********************** aw87xxx_pid_5a attributes end ************************/

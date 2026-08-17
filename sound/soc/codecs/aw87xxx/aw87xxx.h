@@ -105,6 +105,7 @@ struct aw87xxx {
 	struct aw_i2c_packet i2c_packet;
 
 	struct delayed_work fw_load_work;
+	struct delayed_work pid76_off_work;
 	struct acf_bin_info acf_info;
 
 	aw_snd_soc_codec_t *codec;
@@ -112,6 +113,8 @@ struct aw87xxx {
 	struct list_head list;
 
 	struct aw_monitor monitor;
+	bool pid76_off_work_init;
+	bool pid76_off_pending;
 };
 
 int aw87xxx_update_profile(struct aw87xxx *aw87xxx, char *profile);

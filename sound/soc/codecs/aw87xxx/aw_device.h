@@ -2,6 +2,7 @@
 #define __AW_DEVICE_H__
 #include <linux/version.h>
 #include <linux/kernel.h>
+#include <linux/workqueue.h>
 #include <sound/control.h>
 #include <sound/soc.h>
 #include "aw_acf_bin.h"
@@ -123,6 +124,9 @@ struct aw_device {
 	struct aw_rec_mode_desc rec_desc;
 
 	struct aw_device_ops ops;
+	struct delayed_work pid76_pa_enable_work;
+	uint8_t pid76_pa_enable_val;
+	bool pid76_pa_enable_work_init;
 };
 
 
