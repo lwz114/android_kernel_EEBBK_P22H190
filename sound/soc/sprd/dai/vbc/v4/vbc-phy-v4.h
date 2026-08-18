@@ -528,6 +528,7 @@ enum VBC_FIFO_WARTERMARK_TYPE {
 #define SND_VBC_DSP_FUNC_SHUTDOWN 5
 #define SND_VBC_DSP_FUNC_HW_PARAMS 6
 #define SND_VBC_DSP_FUNC_HW_TRIGGER 7
+#define SND_VBC_DSP_FUNC_DATA_TRIGGER 12
 #define SND_VBC_DSP_IO_KCTL_GET 8
 #define SND_VBC_DSP_IO_KCTL_SET 9
 #define SND_VBC_DSP_IO_SHAREMEM_GET 10
@@ -1442,6 +1443,7 @@ struct vbc_codec_priv {
 	struct mainmic_from_para mainmic_from[MAINMIC_USED_MAINMIC_TYPE_MAX];
 	struct vbc_iis_mst_sel_para mst_sel_para[IIS_MST_SEL_ID_MAX];
 	enum VBC_DMIC_SEL_E dmic_chn_sel;
+	u32 special_adc_id_sel;
 	/* to do */
 	atomic_t aux_iis_master_start;
 	int32_t ivs_smtpa_ctl_enable;

@@ -802,6 +802,21 @@ static const char * const vbc_dmic_sel_txt[VBC_DMIC_MAX] = {
 static const struct soc_enum dmic_chn_sel_enum =
 	SOC_ENUM_SINGLE(SND_SOC_NOPM, 0, VBC_DMIC_MAX, vbc_dmic_sel_txt);
 
+enum vbc_special_adc_id_sel {
+	VBC_SPECIAL_ADC_ID_AD0,
+	VBC_SPECIAL_ADC_ID_AD0_AD1,
+	VBC_SPECIAL_ADC_ID_MAX,
+};
+
+static const char * const special_adc_id_sel_txt[] = {
+	[VBC_SPECIAL_ADC_ID_AD0] = "VBC_AD0",
+	[VBC_SPECIAL_ADC_ID_AD0_AD1] = "VBC_AD0_AD1",
+};
+
+static const struct soc_enum special_adc_id_sel_enum =
+	SPRD_VBC_ENUM(SND_SOC_NOPM, VBC_SPECIAL_ADC_ID_MAX,
+		      special_adc_id_sel_txt);
+
 static int vbc_dmic_chn_sel_get(struct snd_kcontrol *kcontrol,
 				 struct snd_ctl_elem_value *ucontrol)
 {
@@ -827,6 +842,49 @@ static int vbc_dmic_chn_sel_put(struct snd_kcontrol *kcontrol,
 	vbc_codec->dmic_chn_sel = ucontrol->value.integer.value[0];
 
 	return 0;
+}
+
+static int vbc_special_adc_id_sel_get(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_codec_get_drvdata(codec);
+
+	ucontrol->value.integer.value[0] = vbc_codec->special_adc_id_sel;
+
+	return 0;
+}
+
+static int vbc_special_adc_id_sel_put(struct snd_kcontrol *kcontrol,
+				      struct snd_ctl_elem_value *ucontrol)
+{
+	struct soc_enum *texts = (struct soc_enum *)kcontrol->private_value;
+	struct snd_soc_codec *codec = snd_soc_kcontrol_codec(kcontrol);
+	struct vbc_codec_priv *vbc_codec = snd_soc_codec_get_drvdata(codec);
+	int val = ucontrol->value.integer.value[0];
+
+	if (val >= texts->items) {
+		pr_err("set SPECIAL_ADC_ID_SEL, index out of bounds\n");
+		return -EINVAL;
+	}
+
+	vbc_codec->special_adc_id_sel = val;
+	sp_asoc_pr_dbg("%s to %s\n", __func__, texts->texts[val]);
+
+	if (val == VBC_SPECIAL_ADC_ID_AD0_AD1) {
+		vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].id = VBC_MUX_IN_ADC0;
+		vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].val = ADC_IN_IIS0_ADC;
+		vbc_codec->mux_adc_in[VBC_MUX_IN_ADC1].id = VBC_MUX_IN_ADC1;
+		vbc_codec->mux_adc_in[VBC_MUX_IN_ADC1].val = ADC_IN_IIS0_ADC;
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_IIS0_ADC);
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC1, ADC_IN_IIS0_ADC);
+	} else {
+		vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].id = VBC_MUX_IN_ADC0;
+		vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].val = ADC_IN_IIS0_ADC;
+		dsp_vbc_mux_adc_set(VBC_MUX_IN_ADC0, ADC_IN_IIS0_ADC);
+	}
+
+	return 1;
 }
 
 static const char *vbc_mux_adc_id2name(int id)
@@ -3733,6 +3791,8 @@ static const struct snd_kcontrol_new vbc_codec_snd_controls[] = {
 		vbc_iis_inf_sys_sel_get, vbc_iis_inf_sys_sel_put),
 	SOC_ENUM_EXT("DMIC_CHN_SEL", dmic_chn_sel_enum,
 		     vbc_dmic_chn_sel_get, vbc_dmic_chn_sel_put),
+	SOC_ENUM_EXT("SPECIAL_ADC_ID_SEL", special_adc_id_sel_enum,
+		     vbc_special_adc_id_sel_get, vbc_special_adc_id_sel_put),
 
 	/* VOICE CAPTURE */
 	SOC_ENUM_EXT("VBC_DSP_VOICE_CAPTURE_TYPE",
@@ -3962,6 +4022,15 @@ static void init_vbc_codec_data(struct vbc_codec_priv *vbc_codec)
 	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC2].val = VBC_IIS_PORT_IIS1;
 	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC3].id = VBC_MUX_IIS_RX_ADC3;
 	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC3].val = VBC_IIS_PORT_IIS3;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].id = VBC_MUX_IN_ADC0;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].val = ADC_IN_IIS0_ADC;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC1].id = VBC_MUX_IN_ADC1;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC1].val = ADC_IN_IIS0_ADC;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC2].id = VBC_MUX_IN_ADC2;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC2].val = ADC_IN_IIS0_ADC;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC3].id = VBC_MUX_IN_ADC3;
+	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC3].val = ADC_IN_IIS0_ADC;
+	vbc_codec->special_adc_id_sel = VBC_SPECIAL_ADC_ID_AD0_AD1;
 
 	/* iis width */
 	vbc_codec->iis_tx_wd[VBC_MUX_IIS_TX_DAC0].id = VBC_MUX_IIS_TX_DAC0;

@@ -59,7 +59,16 @@
 
 struct audio_pm_dma *pm_dma;
 
-static int test_normal_cap_use_iram = 1;
+/*
+ * EEBBK A3 / ums512_1h180 exposes only 0x1e00 bytes for
+ * IRAM_NORMAL_C_DATA in DT. Generic Android/GSI record clients can request
+ * a larger NORMAL_AP01 capture buffer; ALSA then clears runtime->dma_bytes
+ * past the mapped IRAM window and panics in __memset_io().
+ *
+ * Use DDR32 for normal capture so runtime->dma_bytes and the mapped DMA
+ * buffer stay consistent for regular mic recording.
+ */
+static int test_normal_cap_use_iram;
 
 /* temply add it */
 /*"todo pass params use dma_paras by fe dai\n"*/
@@ -847,10 +856,10 @@ static int sprd_pcm_config_dma(struct snd_pcm_substream *substream,
 	size_t period = params_period_bytes(params);
 	size_t periods = totsize/period;
 	int is_playback = substream->stream == SNDRV_PCM_STREAM_PLAYBACK;
+	int p_wakeup = !(params->flags & SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP);
 	u32 fragments_len;
 	struct i2s_config *config = NULL;
 	struct scatterlist *sg = NULL;
-	int p_wakeup = !(params->flags & SNDRV_PCM_HW_PARAMS_NO_PERIOD_WAKEUP);
 
 	dma_data = snd_soc_dai_get_dma_data(srtd->cpu_dai, substream);
 	if (!dma_data) {
@@ -1247,6 +1256,13 @@ static int sprd_pcm_trigger(struct snd_pcm_substream *substream, int cmd)
 
 		pr_info("pcm Start\n");
 		normal_dma_protect_spin_unlock(substream);
+		if (srtd->cpu_dai->id == FE_DAI_ID_CAPTURE_DSP &&
+			substream->stream == SNDRV_PCM_STREAM_CAPTURE) {
+			ret = dsp_send_data_trigger(srtd->cpu_dai->id,
+				substream->stream, 1);
+			if (ret < 0)
+				return ret;
+		}
 		break;
 	case SNDRV_PCM_TRIGGER_STOP:
 	case SNDRV_PCM_TRIGGER_SUSPEND:

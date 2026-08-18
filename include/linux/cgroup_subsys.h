@@ -41,6 +41,14 @@ SUBSYS(devices)
 SUBSYS(freezer)
 #endif
 
+#if IS_ENABLED(CONFIG_CGROUP_WORKINGSET)
+SUBSYS(workingset)
+#endif
+
+#if IS_ENABLED(CONFIG_CGROUP_IOLIMIT)
+SUBSYS(iolimit)
+#endif
+
 #if IS_ENABLED(CONFIG_CGROUP_NET_CLASSID)
 SUBSYS(net_cls)
 #endif
