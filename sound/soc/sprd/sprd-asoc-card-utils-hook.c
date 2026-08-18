@@ -57,14 +57,6 @@ static struct sprd_asoc_hook_spk_priv hook_spk_priv;
 #define AW87XXX_LEFT_DEV_INDEX 0
 #define AW87XXX_RIGHT_DEV_INDEX 1
 
-static char aw87xxx_music_profile[] = "Music";
-static char aw87xxx_receiver_profile[] = "Receiver";
-static char aw87xxx_off_profile[] = "Off";
-
-#if IS_REACHABLE(CONFIG_SND_SOC_AW87XXX)
-extern int aw87xxx_set_profile(int dev_index, char *profile);
-#endif
-
 static int select_mode;
 
 static ssize_t select_mode_show(struct kobject *kobj,
@@ -175,48 +167,9 @@ static int hook_general_spk(int id, int on)
 	return HOOK_OK;
 }
 
-static int hook_aw87xxx_set(int dev_index, char *profile)
-{
-#if IS_REACHABLE(CONFIG_SND_SOC_AW87XXX)
-	int ret;
-
-	ret = aw87xxx_set_profile(dev_index, profile);
-	if (ret < 0)
-		pr_err("%s dev_index %d profile %s failed: %d\n",
-		       __func__, dev_index, profile, ret);
-
-	return ret;
-#else
-	pr_info("%s AW87xxx support disabled\n", __func__);
-	return -ENODEV;
-#endif
-}
-
 static int hook_aw87xxx_smart_spk(int id, int on)
 {
-	char *profile = on ? aw87xxx_music_profile : aw87xxx_off_profile;
-	int ret0 = 0, ret1 = 0;
-
-	if (id == BOARD_FUNC_EAR)
-		profile = on ? aw87xxx_receiver_profile : aw87xxx_off_profile;
-
-	pr_info("%s id: %d, profile: %s, on: %d\n",
-		__func__, id, profile, on);
-
-	if (id == BOARD_FUNC_SPK) {
-		ret0 = hook_aw87xxx_set(AW87XXX_LEFT_DEV_INDEX, profile);
-		ret1 = hook_aw87xxx_set(AW87XXX_RIGHT_DEV_INDEX, profile);
-	} else if (id == BOARD_FUNC_SPK1) {
-		ret1 = hook_aw87xxx_set(AW87XXX_RIGHT_DEV_INDEX, profile);
-	} else if (id == BOARD_FUNC_EAR) {
-		ret0 = hook_aw87xxx_set(AW87XXX_LEFT_DEV_INDEX, profile);
-	} else {
-		return HOOK_BPY;
-	}
-
-	if (ret0 < 0 && ret1 < 0)
-		return ret0;
-
+	/* P22H190 uses SIA81xx; the DT still carries a stale AW87xxx hook. */
 	return HOOK_OK;
 }
 

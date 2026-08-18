@@ -738,19 +738,15 @@ int asoc_sprd_card_probe(struct platform_device *pdev,
 	priv->snd_card.num_links = num_links;
 
 #if IS_ENABLED(CONFIG_SND_SOC_SIA81XX)
-	/* EEBBK A3: attach the SIA81xx smart PA (L/R) as snd_soc aux devices
-	 * and route the codec SPK output into the PA so the DAPM power
-	 * management enables the amplifier on playback. */
+	/* Register the factory SIA81xx auxiliary codecs so the HAL's
+	 * SpkrLeft/SpkrRight controls are present.  The factory DT owns the
+	 * audio routing; do not add a second card-level DAPM route here. */
 	{
 		extern unsigned int soc_sia81xx_get_aux_num(
 			struct platform_device *pdev);
 		extern int soc_sia81xx_init(struct platform_device *pdev,
 			struct snd_soc_aux_dev *aux_dev, u32 aux_num,
 			struct snd_soc_codec_conf *codec_conf, u32 conf_num);
-		static const struct snd_soc_dapm_route sia81xx_pa_routes[] = {
-			{"SPKR DRV", NULL, "SPK Pin"},
-			{"SPKR", NULL, "SPKR DRV"},
-		};
 		unsigned int pa_num = soc_sia81xx_get_aux_num(pdev);
 
 		if (pa_num > 0) {
@@ -768,11 +764,6 @@ int asoc_sprd_card_probe(struct platform_device *pdev,
 				priv->snd_card.num_aux_devs = pa_num;
 				priv->snd_card.codec_conf = pa_conf;
 				priv->snd_card.num_configs = pa_num;
-				priv->snd_card.dapm_routes = sia81xx_pa_routes;
-				priv->snd_card.num_dapm_routes =
-					ARRAY_SIZE(sia81xx_pa_routes);
-				pr_info("%s: SIA81xx PA attached (%u devs)\n",
-					__func__, pa_num);
 			}
 		}
 	}

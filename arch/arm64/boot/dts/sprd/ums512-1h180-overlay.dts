@@ -808,8 +808,6 @@
 		"Ext Ear", "EAR Pin",
 		"Ext Ear", "SPK Pin",
 		"Ext Ear", "HP Pin";
-	/* external smart PA control (AW87xxx) */
-	sprd,spk-ext-pa-info = <0 1 4 0 2 1 4 1>;
 	/* SIA81xx integration (driver optional; harmless if absent) */
 	si,sia81xx-max-num = <2>;
 	si,sia81xx-aux-devs = <&sia81xx_L>, <&sia81xx_R>;
