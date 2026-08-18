@@ -1,5 +1,6 @@
 ccflags-y += -I$(srctree)/drivers/camera/common
 ccflags-y += -I$(srctree)/drivers/camera/interface
+ccflags-y += -I$(srctree)/drivers/camera/sensor
 ccflags-y += -I$(srctree)/drivers/camera/sensor/csi2/sprd/receiver_r3p0
 
 obj-$(CONFIG_SPRD_CAMERA_SENSOR) += sprd_sensor.o

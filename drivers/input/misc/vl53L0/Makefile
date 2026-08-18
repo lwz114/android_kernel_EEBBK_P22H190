@@ -1,5 +1,6 @@
 ccflags-y	+= -DDEBUG
-ccflags-y	+= -Idrivers/input/misc/vl53L0/inc 
+ccflags-y	+= -I$(src)
+ccflags-y	+= -I$(src)/inc
 
 obj-$(CONFIG_INPUT_SENSORS_ST_VL53L0)	+= stmvl53l0.o
 stmvl53l0-objs		:= stmvl53l0_module.o stmvl53l0_module-i2c.o stmvl53l0_module-cci.o
