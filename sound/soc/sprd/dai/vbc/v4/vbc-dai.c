@@ -689,7 +689,8 @@ static int get_startup_scene_dac_id(int scene_id)
 	return dac_id;
 }
 
-static int get_startup_scene_adc_id(int scene_id)
+static int get_startup_scene_adc_id(struct vbc_codec_priv *vbc_codec,
+				    int scene_id)
 {
 	int adc_id;
 
@@ -701,7 +702,15 @@ static int get_startup_scene_adc_id(int scene_id)
 		adc_id = VBC_AD0;
 		break;
 	case VBC_DAI_ID_CAPTURE_DSP:
-		adc_id = VBC_AD0;
+		/*
+		 * A3/Horizon capture DSP uses the special ADC selector path.
+		 * Stock boot passes adc_id=5 here, which is VBC_AD_MAX.
+		 */
+		if (vbc_codec &&
+		    vbc_codec->special_adc_id_sel == VBC_SPECIAL_ADC_ID_AD0_AD1)
+			adc_id = VBC_AD_MAX;
+		else
+			adc_id = VBC_AD0;
 		break;
 	case VBC_DAI_ID_FAST_P:
 		/* not used */
@@ -850,41 +859,6 @@ static int16_t get_startup_master_reload(void)
 	return 1;
 }
 
-static bool a3_primary_capture_scene(int scene_id, int stream)
-{
-	if (stream != SNDRV_PCM_STREAM_CAPTURE)
-		return false;
-
-	return scene_id == VBC_DAI_ID_NORMAL_AP01 ||
-		scene_id == VBC_DAI_ID_NORMAL_AP23;
-}
-
-static void a3_fix_primary_capture_route(struct vbc_codec_priv *vbc_codec,
-					  int scene_id, int stream)
-{
-	if (!a3_primary_capture_scene(scene_id, stream))
-		return;
-
-	/*
-	 * EEBBK A3: generic GSI mixer paths can switch primary recording to
-	 * IIS2/RIGHT_HIGH, which starts the DSP capture scene but records
-	 * silence.  Keep this limited to normal AP capture; vendor DSP
-	 * capture routes are managed by the HAL and must not be overridden.
-	 */
-	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC0].id = VBC_MUX_IIS_RX_ADC0;
-	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC0].val = VBC_IIS_PORT_IIS1;
-	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC1].id = VBC_MUX_IIS_RX_ADC1;
-	vbc_codec->mux_iis_rx[VBC_MUX_IIS_RX_ADC1].val = VBC_IIS_PORT_IIS1;
-	vbc_codec->iis_rx_lr_mod[VBC_MUX_IIS_RX_ADC0].id = VBC_MUX_IIS_RX_ADC0;
-	vbc_codec->iis_rx_lr_mod[VBC_MUX_IIS_RX_ADC0].value = LEFT_HIGH;
-	vbc_codec->iis_rx_lr_mod[VBC_MUX_IIS_RX_ADC1].id = VBC_MUX_IIS_RX_ADC1;
-	vbc_codec->iis_rx_lr_mod[VBC_MUX_IIS_RX_ADC1].value = LEFT_HIGH;
-	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].id = VBC_MUX_IN_ADC0;
-	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC0].val = ADC_IN_IIS0_ADC;
-	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC1].id = VBC_MUX_IN_ADC1;
-	vbc_codec->mux_adc_in[VBC_MUX_IN_ADC1].val = ADC_IN_IIS0_ADC;
-}
-
 static void fill_dsp_startup_data(struct vbc_codec_priv *vbc_codec,
 	int scene_id, int stream,
 	struct sprd_vbc_stream_startup_shutdown *startup_info)
@@ -898,8 +872,7 @@ static void fill_dsp_startup_data(struct vbc_codec_priv *vbc_codec,
 	info->id = scene_id;
 	info->stream = stream;
 	para->dac_id = get_startup_scene_dac_id(scene_id);
-	para->adc_id = get_startup_scene_adc_id(scene_id);
-	a3_fix_primary_capture_route(vbc_codec, scene_id, stream);
+	para->adc_id = get_startup_scene_adc_id(vbc_codec, scene_id);
 
 	pr_debug("adc_id %d, dmic_chn_sel %d\n", para->adc_id,
 		 vbc_codec->dmic_chn_sel);
@@ -1057,7 +1030,7 @@ static void fill_dsp_shutdown_data(struct vbc_codec_priv *vbc_codec,
 	shutdown_info->stream_info.id = scene_id;
 	shutdown_info->stream_info.stream = stream;
 	dac_id = get_startup_scene_dac_id(scene_id);
-	adc_id = get_startup_scene_adc_id(scene_id);
+	adc_id = get_startup_scene_adc_id(vbc_codec, scene_id);
 	shutdown_info->startup_para.dac_id = dac_id;
 	shutdown_info->startup_para.adc_id = adc_id;
 }
@@ -1167,6 +1140,22 @@ static int dsp_trigger(struct vbc_codec_priv *vbc_codec,
 
 	return 0;
 }
+
+int dsp_send_data_trigger(int scene_id, int stream, int up_down)
+{
+	int ret;
+
+	pr_info("%s scene_id %d, stream %d, up_down %d\n", __func__,
+		scene_id, stream, up_down);
+	ret = aud_send_cmd_no_wait(AMSG_CH_VBC_CTL,
+		SND_VBC_DSP_FUNC_DATA_TRIGGER, scene_id, stream,
+		up_down, 0);
+	if (ret < 0)
+		return -EIO;
+
+	return 0;
+}
+EXPORT_SYMBOL(dsp_send_data_trigger);
 
 void set_kctrl_vbc_dac_iis_wd(struct vbc_codec_priv *vbc_codec, int dac_id,
 			      int data_fmt)
@@ -1907,9 +1896,10 @@ static int scene_normal_hw_params(struct snd_pcm_substream *substream,
 		normal_vbc_protect_mutex_lock(stream);
 		is_started = get_normal_p_running_status(stream);
 		if ((is_playback && is_started) ||
-				!is_playback)
+				!is_playback) {
 			ap_hw_params(vbc_codec, scene_id, stream,
 				     vbc_chan, rate, data_fmt);
+		}
 		normal_vbc_protect_mutex_unlock(stream);
 	}
 	hw_param_unlock_mtx(scene_id, stream);

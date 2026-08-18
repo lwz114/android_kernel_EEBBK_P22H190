@@ -57,4 +57,7 @@ struct audio_pm_dma {
 	/* protect no_pm_cnt */
 	struct mutex pm_mtx_cnt;
 };
+/* Sends the VBC data-path trigger after the AP DMA is armed. */
+int dsp_send_data_trigger(int scene_id, int stream, int up_down);
+
 #endif /* __SPRD_DMA_ENGINE_PCM_H */
