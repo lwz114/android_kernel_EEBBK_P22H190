@@ -40,6 +40,7 @@ struct goodix_ts_data {
 	bool swapped_x_y;
 	bool inverted_x;
 	bool inverted_y;
+	bool invert_x_after_swap;
 	unsigned int max_touch_num;
 	unsigned int int_trigger_type;
 	int cfg_len;
@@ -267,13 +268,15 @@ static void goodix_ts_report_touch(struct goodix_ts_data *ts, u8 *coor_data)
 	int input_y = get_unaligned_le16(&coor_data[3]);
 	int input_w = get_unaligned_le16(&coor_data[5]);
 
-	/* Inversions have to happen before axis swapping */
+	/* Standard touchscreen properties are applied before axis swapping. */
 	if (ts->inverted_x)
 		input_x = ts->abs_x_max - input_x;
 	if (ts->inverted_y)
 		input_y = ts->abs_y_max - input_y;
 	if (ts->swapped_x_y)
 		swap(input_x, input_y);
+	if (ts->invert_x_after_swap)
+		input_x = ts->abs_x_max - input_x;
 
 	input_mt_slot(ts->input_dev, id);
 	input_mt_report_slot_state(ts->input_dev, MT_TOOL_FINGER, true);
@@ -753,10 +756,13 @@ static int goodix_configure_dev(struct goodix_ts_data *ts)
 	/*
 	 * The P22H190 carries a legacy GT9xx DT node without the standard
 	 * touchscreen-swapped-x-y property. Its controller coordinate axes are
-	 * opposite to the display coordinate axes.
+	 * swapped and its final X coordinate is mirrored relative to display
+	 * coordinates.
 	 */
-	if (of_device_is_compatible(ts->client->dev.of_node, "goodix,gt9xx"))
+	if (of_device_is_compatible(ts->client->dev.of_node, "goodix,gt9xx")) {
 		ts->swapped_x_y = true;
+		ts->invert_x_after_swap = true;
+	}
 
 	goodix_read_config(ts);
 
