@@ -2,12 +2,21 @@ name: Build P22H190 kernel
 
 on:
   workflow_dispatch:
+    inputs:
+      profile:
+        description: Build profile
+        type: choice
+        required: true
+        default: standard
+        options:
+          - standard
+          - droidspaces
 
 permissions:
   contents: write
 
 concurrency:
-  group: p22h190-${{ github.ref }}
+  group: p22h190-${{ inputs.profile || 'standard' }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
@@ -16,14 +25,10 @@ jobs:
     env:
       ARCH: arm64
       SUBARCH: arm64
-      DEFCONFIG: ums512-p22h190_defconfig
       CLANG_TRIPLE: aarch64-linux-gnu-
       CROSS_COMPILE: aarch64-linux-gnu-
-      BUILD_DIR: ${{ github.workspace }}/out/ums512-p22h190
-      RELEASE_DIR: ${{ github.workspace }}/out/release
       ANYKERNEL_DIR: ${{ github.workspace }}/out/AnyKernel3
       KPM_PATCHER: ${{ github.workspace }}/out/tools/patch_linux
-      SOCKO_TEMPLATE: ${{ github.workspace }}/prebuilts/p22h190/socko.factory.img
 
     steps:
       - name: Checkout source and submodules
@@ -50,6 +55,40 @@ jobs:
           "$CLANG_DIR/clang" --version | tee out/clang-version.txt
           grep -F 'b397f81060ce6d701042b782172ed13bee898b79' out/clang-version.txt
           printf 'CLANG_DIR=%s\n' "$CLANG_DIR" >> "$GITHUB_ENV"
+
+      - name: Select build profile
+        shell: bash
+        env:
+          BUILD_PROFILE: ${{ inputs.profile || 'standard' }}
+        run: |
+          set -euo pipefail
+          case "$BUILD_PROFILE" in
+            standard)
+              profile=p22h190
+              defconfig=ums512-p22h190_defconfig
+              build_dir="$GITHUB_WORKSPACE/out/ums512-p22h190"
+              release_dir="$GITHUB_WORKSPACE/out/release"
+              ;;
+            droidspaces)
+              profile=droidspaces
+              defconfig=ums512-p22h190_droidspaces_defconfig
+              build_dir="$GITHUB_WORKSPACE/out/ums512-p22h190-droidspaces"
+              release_dir="$GITHUB_WORKSPACE/out/release-droidspaces"
+              ;;
+            *)
+              echo "unsupported profile: $BUILD_PROFILE" >&2
+              exit 2
+              ;;
+          esac
+          {
+            printf 'P22H190_PROFILE=%s\n' "$profile"
+            printf 'P22H190_DEFCONFIG=%s\n' "$defconfig"
+            printf 'BUILD_DIR=%s\n' "$build_dir"
+            printf 'RELEASE_DIR=%s\n' "$release_dir"
+            printf 'SOCKO_TEMPLATE=%s\n' "$GITHUB_WORKSPACE/prebuilts/p22h190/socko.factory.img"
+          } >> "$GITHUB_ENV"
+          printf 'profile=%s\ndefconfig=%s\nbuild_dir=%s\nrelease_dir=%s\n' \
+            "$profile" "$defconfig" "$build_dir" "$release_dir"
 
       - name: Install build and packaging dependencies
         run: |
@@ -86,6 +125,8 @@ jobs:
           set -o pipefail
           mkdir -p out
           ANDROID_CLANG_DIR="$CLANG_DIR" \
+          P22H190_PROFILE="$P22H190_PROFILE" \
+          P22H190_DEFCONFIG="$P22H190_DEFCONFIG" \
           P22H190_BUILD_DIR="$BUILD_DIR" \
           P22H190_OUTPUT_DIR="$RELEASE_DIR" \
           SOCKO_TEMPLATE="$SOCKO_TEMPLATE" \
@@ -99,16 +140,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          ls -lh out/release
-          test -s out/release/socko.img
-          test -n "$(find out/release -maxdepth 1 -name 'AnyKernel3-P22H190-*.zip' -size +1c -print -quit)"
-          sha256sum out/release/*.img out/release/*.zip | tee out/release/SHA256SUMS
+          ls -lh "$RELEASE_DIR"
+          test -s "$RELEASE_DIR/socko.img"
+          test -n "$(find "$RELEASE_DIR" -maxdepth 1 -name 'AnyKernel3-P22H190-*.zip' -size +1c -print -quit)"
+          sha256sum "$RELEASE_DIR"/*.img "$RELEASE_DIR"/*.zip | tee "$RELEASE_DIR/SHA256SUMS"
 
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p22h190-build-log-${{ github.sha }}
+          name: p22h190-${{ inputs.profile || 'standard' }}-build-log-${{ github.sha }}
           path: |
             out/build.log
             out/clang-version.txt
@@ -118,11 +159,11 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: p22h190-packages-${{ github.sha }}
+          name: p22h190-${{ inputs.profile || 'standard' }}-packages-${{ github.sha }}
           path: |
-            out/release/*.zip
-            out/release/*.img
-            out/release/SHA256SUMS
+            out/release*/*.zip
+            out/release*/*.img
+            out/release*/SHA256SUMS
           if-no-files-found: warn
           compression-level: 0
 
@@ -130,11 +171,11 @@ jobs:
         if: github.event_name != 'pull_request' && success()
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: p22h190-${{ github.sha }}-${{ github.run_number }}
-          name: P22H190 kernel ${{ github.sha }}
+          tag_name: p22h190-${{ inputs.profile || 'standard' }}-${{ github.sha }}-${{ github.run_number }}
+          name: P22H190 ${{ inputs.profile || 'standard' }} kernel ${{ github.sha }}
           prerelease: true
           generate_release_notes: false
           files: |
-            out/release/*.zip
-            out/release/*.img
-            out/release/SHA256SUMS
+            out/release*/*.zip
+            out/release*/*.img
+            out/release*/SHA256SUMS

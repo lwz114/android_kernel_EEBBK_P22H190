@@ -5,6 +5,10 @@ set -euo pipefail
 #   kernel  build Image and modules only
 #   socko   build Image/modules and generate a patched socko image
 #   all     same as socko (default, kept for backwards compatibility)
+# Profiles are selected with P22H190_PROFILE and P22H190_DEFCONFIG. The
+# default profile remains the original P22H190 build; Droidspaces uses:
+#   P22H190_PROFILE=droidspaces
+#   P22H190_DEFCONFIG=ums512-p22h190_droidspaces_defconfig
 TARGET="${1:-all}"
 if [[ "$TARGET" == --target=* ]]; then
     TARGET="${TARGET#--target=}"
@@ -18,6 +22,11 @@ case "$TARGET" in
         printf '  kernel  build Image/modules and publish kernel-output\n'
         printf '  socko   build, patch factory modules, and rebuild socko.img\n'
         printf '  all     alias for socko (default)\n'
+        printf '\n'
+        printf '  Droidspaces profile:\n'
+        printf '    P22H190_PROFILE=droidspaces \\\n'
+        printf '    P22H190_DEFCONFIG=ums512-p22h190_droidspaces_defconfig \\\n'
+        printf '    %s all\n' "$0"
         exit 0
         ;;
     *)
@@ -28,8 +37,15 @@ case "$TARGET" in
 esac
 
 SRC_DIR="${P22H190_SOURCE_DIR:-$(cd "$(dirname "$0")/.." && pwd -P)}"
-OUT_DIR="${P22H190_BUILD_DIR:-$SRC_DIR/out/ums512-p22h190}"
-DEST_DIR="${P22H190_OUTPUT_DIR:-$SRC_DIR/out/release}"
+PROFILE="${P22H190_PROFILE:-p22h190}"
+DEFCONFIG="${P22H190_DEFCONFIG:-${DEFCONFIG:-ums512-p22h190_defconfig}}"
+if [[ "$PROFILE" == "p22h190" ]]; then
+    PROFILE_SUFFIX=""
+else
+    PROFILE_SUFFIX="-$PROFILE"
+fi
+OUT_DIR="${P22H190_BUILD_DIR:-$SRC_DIR/out/ums512-p22h190${PROFILE_SUFFIX}}"
+DEST_DIR="${P22H190_OUTPUT_DIR:-$SRC_DIR/out/release${PROFILE_SUFFIX}}"
 TC_DIR="${ANDROID_CLANG_DIR:-$SRC_DIR/out/toolchains/clang-r383902/bin}"
 KPM_PATCHER="${KPM_PATCHER:-$SRC_DIR/out/tools/patch_linux}"
 MODULE_METADATA_PATCHER="${MODULE_METADATA_PATCHER:-$SRC_DIR/tools/patch-module-metadata.pl}"
@@ -38,6 +54,11 @@ SOCKO_OUTPUT="${SOCKO_OUTPUT:-$DEST_DIR/socko.img}"
 ANYKERNEL_DIR="${ANYKERNEL_DIR:-$SRC_DIR/out/AnyKernel3}"
 ENABLE_KPM="${ENABLE_KPM:-1}"
 FUSERMOUNT="${FUSERMOUNT:-$(command -v fusermount || command -v fusermount3 || true)}"
+
+if [[ ! -f "$SRC_DIR/arch/arm64/configs/$DEFCONFIG" ]]; then
+    printf 'error: defconfig not found: %s\n' "$SRC_DIR/arch/arm64/configs/$DEFCONFIG" >&2
+    exit 1
+fi
 
 if [[ ! -x "$TC_DIR/clang" || ! -x "$TC_DIR/ld.lld" ]]; then
     printf 'error: Android clang toolchain not found in %s\n' "$TC_DIR" >&2
@@ -77,6 +98,9 @@ export PATH="$TC_DIR:$PATH"
 
 GIT_HASH="$(git -C "$SRC_DIR" rev-parse --short=12 HEAD)"
 KERNEL_LOCALVERSION="-twodays-custom-g$GIT_HASH"
+if [[ "$PROFILE" != "p22h190" ]]; then
+    KERNEL_LOCALVERSION="-twodays-$PROFILE-custom-g$GIT_HASH"
+fi
 
 MAKE_ARGS=(
     O="$OUT_DIR"
@@ -107,9 +131,11 @@ SOCKO_MODULES=(
     drivers/camera/sensor/sprd_sensor.ko
 )
 
+printf 'profile: %s\n' "$PROFILE"
+printf 'defconfig: %s\n' "$DEFCONFIG"
 printf 'target: %s\n' "$TARGET"
-printf '%s\n' '[1/4] generating ums512-p22h190_defconfig'
-make -C "$SRC_DIR" "${MAKE_ARGS[@]}" ums512-p22h190_defconfig
+printf '%s\n' "[1/4] generating $DEFCONFIG"
+make -C "$SRC_DIR" "${MAKE_ARGS[@]}" "$DEFCONFIG"
 
 printf '%s\n' "[2/4] building Image and modules with -j$JOBS ($KERNEL_LOCALVERSION)"
 make -C "$SRC_DIR" "${MAKE_ARGS[@]}" -j"$JOBS"
@@ -172,7 +198,8 @@ if [[ "$TARGET" == "kernel" ]]; then
     {
         printf 'source=%s\n' "$SRC_DIR"
         printf 'output=%s\n' "$OUT_DIR"
-        printf 'config=ums512-p22h190_defconfig\n'
+        printf 'profile=%s\n' "$PROFILE"
+        printf 'config=%s\n' "$DEFCONFIG"
         printf 'target=%s\n' "$TARGET"
         printf 'clang=%s\n' "$TC_DIR/clang"
         printf 'kernel_release=%s\n' "$KERNEL_RELEASE"
@@ -283,7 +310,7 @@ sed -i -E 's/^do.modules=.*/do.modules=1/' "$AK_STAGE/anykernel.sh"
 sed -i -E 's#^BLOCK=.*#BLOCK=auto;#' "$AK_STAGE/anykernel.sh"
 sed -i -E 's/^IS_SLOT_DEVICE=.*/IS_SLOT_DEVICE=auto;/' "$AK_STAGE/anykernel.sh"
 mkdir -p "$DEST_DIR"
-AK_OUTPUT="$DEST_DIR/AnyKernel3-P22H190-$KERNEL_RELEASE.zip"
+AK_OUTPUT="$DEST_DIR/AnyKernel3-P22H190${PROFILE_SUFFIX}-$KERNEL_RELEASE.zip"
 (
     cd "$AK_STAGE"
     zip -q -r -9 "$AK_OUTPUT" .
@@ -292,7 +319,8 @@ AK_OUTPUT="$DEST_DIR/AnyKernel3-P22H190-$KERNEL_RELEASE.zip"
 {
     printf 'source=%s\n' "$SRC_DIR"
     printf 'output=%s\n' "$OUT_DIR"
-    printf 'config=ums512-p22h190_defconfig\n'
+    printf 'profile=%s\n' "$PROFILE"
+    printf 'config=%s\n' "$DEFCONFIG"
     printf 'target=%s\n' "$TARGET"
     printf 'clang=%s\n' "$TC_DIR/clang"
     printf 'kernel_release=%s\n' "$KERNEL_RELEASE"
