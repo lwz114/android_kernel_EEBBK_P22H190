@@ -1088,10 +1088,10 @@ static ssize_t cabc_disable_read(struct file *fp, struct kobject *kobj,
 		count = attr->size - off;
 
 	down(&ctx->cabc_lock);
-	if (ctx->is_inited)
-		dpu->core->enhance_get(ctx, ENHANCE_CFG_ID_CABC_STATE, &disabled);
+	dpu->core->enhance_get(ctx, ENHANCE_CFG_ID_CABC_STATE, &disabled);
 	up(&ctx->cabc_lock);
 
+	disabled = (disabled == CABC_DISABLED) ? 1 : 0;
 	memset(buf, 0, count);
 	memcpy(buf, &disabled, min_t(size_t, count, sizeof(disabled)));
 
