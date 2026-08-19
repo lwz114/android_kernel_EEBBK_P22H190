@@ -128,5 +128,3 @@ hardware needs.
 As a netdev is set to DOWN the XFRM stack's netdev listener will call
 xdo_dev_state_delete() and xdo_dev_state_free() on any remaining offloaded
 states.
-
-

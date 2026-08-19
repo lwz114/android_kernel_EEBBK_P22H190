@@ -6993,7 +6993,7 @@ static int fixup_bpf_calls(struct bpf_verifier_env *env)
 			if (bpf_map_ptr_poisoned(aux)) {
 				verbose(env, "tail_call obusing map_ptr\n");
 				return -EINVAL;
-			
+
 			map_ptr = BPF_MAP_PTR(aux->map_state);}
 
 			insn_buf[0] = BPF_JMP_IMM(BPF_JGE, BPF_REG_3,
@@ -7109,7 +7109,7 @@ static void free_states(struct bpf_verifier_env *env)
 int bpf_check(struct bpf_prog **prog, union bpf_attr *attr,
 	      union bpf_attr __user *uattr)
 {
-	struct bpf_verifier_log *log; 
+	struct bpf_verifier_log *log;
 	struct bpf_verifier_env *env;
 	int ret = -EINVAL;
 
