@@ -2281,8 +2281,7 @@ static int __init fts_ts_init(void)
 
 	fts_init_lcd_str();
 
-	/* EEBBK A3: this kernel only targets the FT8201AB board - always
-	 * fall back to the board panel name. */
+	/* Keep the H180 fallback for boots that omit lcd_name. */
 	if (!lcd_str)
 		lcd_str = "lcd_ft8201ab_boe_mipi_fhd_bbk_H180";
 
@@ -2294,10 +2293,11 @@ static int __init fts_ts_init(void)
 		ft8006saa = 1;
 		FTS_INFO("kaoshan ft8006saa = %d fts_ic_type = %d \n",ft8006saa,fts_ic_type);
 	} else if (!(strncmp(lcd_str,"lcd_ft8201ab_boe_mipi_fhd_bbk_H180",strlen("lcd_ft8201ab_boe_mipi_fhd_bbk_H180"))) ||
-		   !(strncmp(lcd_str,"lcd_ft8201ab_boe_mipi_fhd_bbk_H170",strlen("lcd_ft8201ab_boe_mipi_fhd_bbk_H170")))) {
+		   !(strncmp(lcd_str,"lcd_ft8201ab_boe_mipi_fhd_bbk_H170",strlen("lcd_ft8201ab_boe_mipi_fhd_bbk_H170"))) ||
+		   !(strncmp(lcd_str,"lcd_himax8279_boe_mipi_fhd_bbk_H190",strlen("lcd_himax8279_boe_mipi_fhd_bbk_H190")))) {
 		fts_ic_type = 1;
 		ft8006saa = 0;
-		FTS_INFO("EEBBK A3 FT8201AB panel: enable FTS (fts_ic_type=%d)\n", fts_ic_type);
+		FTS_INFO("EEBBK panel: enable FTS (fts_ic_type=%d)\n", fts_ic_type);
 	} else {
 		FTS_INFO("nothing match lcd name\n");
 		fts_ic_type = 0;
