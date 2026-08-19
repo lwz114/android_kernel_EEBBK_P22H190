@@ -117,6 +117,12 @@
 		compatible = "sprd,ion";
 		#address-cells = <1>;
 		#size-cells = <0>;
+
+		heap@1 {
+			reg = <1>;
+			label = "system";
+			type = <0>;
+		};
 	};
 
 	ddr_dfs: scene-frequency {
