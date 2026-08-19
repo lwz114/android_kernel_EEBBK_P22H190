@@ -1473,10 +1473,8 @@ static int sprd_panel_parse_dt(struct device_node *np, struct sprd_panel *panel)
 	 * board; treating the read as an ESD fault causes a recovery loop and
 	 * visible screen flicker every panel check period. */
 	if (strstr(lcd_name, "ft8201ab_boe_mipi_fhd_bbk") ||
-	    strstr(lcd_name, "himax8279_boe_mipi_fhd_bbk_H190")) {
+	    strstr(lcd_name, "himax8279_boe_mipi_fhd_bbk_H190"))
 		panel->info.esd_conf.esd_check_en = 0;
-		panel->info.cabc_cfg.cabc_support = 0;
-	}
 
 	return 0;
 }
