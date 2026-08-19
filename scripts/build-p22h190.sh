@@ -33,7 +33,7 @@ DEST_DIR="${P22H190_OUTPUT_DIR:-$SRC_DIR/out/release}"
 if [[ -n "${ANDROID_CLANG_DIR:-}" ]]; then
     TC_DIR="$ANDROID_CLANG_DIR"
 elif [[ -x /usr/bin/clang && -x /usr/bin/ld.lld ]]; then
-    TC_DIR="/usr/bin"
+    TC_DIR="/usr"
 else
     TC_DIR="$SRC_DIR/out/toolchains/clang-r383902/bin"
 fi
