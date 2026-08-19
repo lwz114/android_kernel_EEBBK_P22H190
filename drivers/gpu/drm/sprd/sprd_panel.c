@@ -1523,7 +1523,8 @@ static int sprd_panel_probe(struct mipi_dsi_device *slave)
 		panel->backlight->props.power = FB_BLANK_UNBLANK;
 		backlight_update_status(panel->backlight);
 	} else if (bl_node) {
-		DRM_WARN("backlight is not ready, continue without backlight provider\n");
+		DRM_WARN("backlight is not ready, panel probe deferred\n");
+		return -EPROBE_DEFER;
 	} else {
 		DRM_WARN("backlight node not found\n");
 	}
