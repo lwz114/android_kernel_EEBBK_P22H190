@@ -107,22 +107,12 @@ SOCKO_MODULES=(
     drivers/camera/sensor/sprd_sensor.ko
 )
 
-DTBO_OUTPUT="${DTBO_OUTPUT:-$DEST_DIR/ums512-1h180-overlay.dtbo}"
-
 printf 'target: %s\n' "$TARGET"
 printf '%s\n' '[1/4] generating ums512-p22h190_defconfig'
 make -C "$SRC_DIR" "${MAKE_ARGS[@]}" ums512-p22h190_defconfig
 
-printf '%s\n' "[2/4] building Image, dtbo and modules with -j$JOBS ($KERNEL_LOCALVERSION)"
-make -C "$SRC_DIR" "${MAKE_ARGS[@]}" -j"$JOBS" dtbs
+printf '%s\n' "[2/4] building Image and modules with -j$JOBS ($KERNEL_LOCALVERSION)"
 make -C "$SRC_DIR" "${MAKE_ARGS[@]}" -j"$JOBS"
-
-DTBO_SRC="$OUT_DIR/arch/arm64/boot/dts/sprd/ums512-1h180-overlay.dtbo"
-if [[ ! -f "$DTBO_SRC" ]]; then
-    printf 'error: build completed without %s\n' "$DTBO_SRC" >&2
-    exit 1
-fi
-cp -f "$DTBO_SRC" "$DTBO_OUTPUT"
 
 IMAGE="$OUT_DIR/arch/arm64/boot/Image"
 if [[ ! -f "$IMAGE" ]]; then
