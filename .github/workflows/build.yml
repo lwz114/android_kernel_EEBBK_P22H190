@@ -56,8 +56,14 @@ jobs:
 
       - name: Install build and packaging dependencies
         run: |
-          sudo apt-get update
-          sudo apt-get install -y \
+          set -euo pipefail
+          # GitHub's mirror list occasionally prioritizes an unreachable Azure
+          # mirror. Keep the upstream archive candidate and bound retries.
+          if [ -f /etc/apt/apt-mirrors.txt ]; then
+            sudo sed -i '\|azure\.archive\.ubuntu\.com/ubuntu|d' /etc/apt/apt-mirrors.txt
+          fi
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update
+          sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y \
             bc bison cpio device-tree-compiler e2fsprogs flex fuse3 \
             gcc-aarch64-linux-gnu git kmod libelf-dev libncurses-dev \
             libssl-dev lld perl python3 rsync unzip zip
