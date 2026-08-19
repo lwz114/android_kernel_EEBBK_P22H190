@@ -1,9 +1,6 @@
 name: Build P22H190 kernel
 
 on:
-  push:
-    branches: [main]
-  pull_request:
   workflow_dispatch:
 
 permissions:
