@@ -66,7 +66,7 @@ jobs:
           sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y \
             bc bison cpio device-tree-compiler e2fsprogs fuse2fs flex fuse3 \
             gcc-aarch64-linux-gnu git kmod libelf-dev libncurses-dev \
-            libssl-dev lld perl python3 rsync unzip zip
+            libssl-dev libyaml-dev lld perl python3 rsync unzip zip
 
       - name: Fetch KPM patcher and AnyKernel3
         shell: bash
