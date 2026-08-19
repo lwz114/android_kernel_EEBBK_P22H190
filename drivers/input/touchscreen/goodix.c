@@ -750,6 +750,14 @@ static int goodix_configure_dev(struct goodix_ts_data *ts)
 	ts->inverted_y = device_property_read_bool(&ts->client->dev,
 						   "touchscreen-inverted-y");
 
+	/*
+	 * The P22H190 carries a legacy GT9xx DT node without the standard
+	 * touchscreen-swapped-x-y property. Its controller coordinate axes are
+	 * opposite to the display coordinate axes.
+	 */
+	if (of_device_is_compatible(ts->client->dev.of_node, "goodix,gt9xx"))
+		ts->swapped_x_y = true;
+
 	goodix_read_config(ts);
 
 	error = goodix_request_input_dev(ts);
