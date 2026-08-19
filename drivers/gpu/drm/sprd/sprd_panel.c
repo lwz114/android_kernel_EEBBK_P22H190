@@ -1506,17 +1506,28 @@ static int sprd_panel_probe(struct mipi_dsi_device *slave)
 	if (bl_node) {
 		panel->backlight = of_find_backlight_by_node(bl_node);
 		of_node_put(bl_node);
+	}
 
-		if (panel->backlight) {
-			panel->backlight->props.state &= ~BL_CORE_FBBLANK;
-			panel->backlight->props.power = FB_BLANK_UNBLANK;
-			backlight_update_status(panel->backlight);
-		} else {
-			DRM_WARN("backlight is not ready, panel probe deferred\n");
-			return -EPROBE_DEFER;
+	if (!panel->backlight) {
+		struct device_node *fallback_bl_node = of_find_node_by_name(NULL,
+							    "backlight");
+
+		if (fallback_bl_node) {
+			panel->backlight = of_find_backlight_by_node(fallback_bl_node);
+			of_node_put(fallback_bl_node);
 		}
-	} else
+	}
+
+	if (panel->backlight) {
+		panel->backlight->props.state &= ~BL_CORE_FBBLANK;
+		panel->backlight->props.power = FB_BLANK_UNBLANK;
+		backlight_update_status(panel->backlight);
+	} else if (bl_node) {
+		DRM_WARN("backlight is not ready, panel probe deferred\n");
+		return -EPROBE_DEFER;
+	} else {
 		DRM_WARN("backlight node not found\n");
+	}
 
 	panel->supply = devm_regulator_get(&slave->dev, "power");
 	if (IS_ERR(panel->supply)) {
