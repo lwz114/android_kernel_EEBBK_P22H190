@@ -514,8 +514,13 @@ extern const struct file_operations bpf_prog_fops;
 #undef BPF_PROG_TYPE
 #undef BPF_MAP_TYPE
 
+#ifdef CONFIG_BPF_OFFLOAD
 extern const struct bpf_verifier_ops bpf_offload_verifier_ops;
 extern const struct bpf_prog_ops bpf_offload_prog_ops;
+#else
+static const struct bpf_verifier_ops bpf_offload_verifier_ops;
+static const struct bpf_prog_ops bpf_offload_prog_ops;
+#endif
 
 struct bpf_prog *bpf_prog_get(u32 ufd);
 struct bpf_prog *bpf_prog_get_type(u32 ufd, enum bpf_prog_type type);
@@ -685,13 +690,12 @@ static inline void __dev_map_flush(struct bpf_map *map)
 }
 #endif /* CONFIG_BPF_SYSCALL */
 
+#ifdef CONFIG_BPF_OFFLOAD
 int bpf_prog_offload_compile(struct bpf_prog *prog);
 void bpf_prog_offload_destroy(struct bpf_prog *prog);
 int bpf_prog_offload_info_fill(struct bpf_prog_info *info,
 			       struct bpf_prog *prog);
-
 int bpf_map_offload_info_fill(struct bpf_map_info *info, struct bpf_map *map);
-
 int bpf_map_offload_lookup_elem(struct bpf_map *map, void *key, void *value);
 int bpf_map_offload_update_elem(struct bpf_map *map,
 				void *key, void *value, u64 flags);
@@ -699,8 +703,26 @@ int bpf_map_offload_delete_elem(struct bpf_map *map, void *key);
 int bpf_map_offload_get_next_key(struct bpf_map *map,
 				 void *key, void *next_key);
 bool bpf_offload_dev_match(struct bpf_prog *prog, struct bpf_map *map);
+#else
+static inline int bpf_prog_offload_compile(struct bpf_prog *prog) { return 0; }
+static inline void bpf_prog_offload_destroy(struct bpf_prog *prog) { }
+static inline int bpf_prog_offload_info_fill(struct bpf_prog_info *info,
+					    struct bpf_prog *prog) { return -EOPNOTSUPP; }
+static inline int bpf_map_offload_info_fill(struct bpf_map_info *info,
+					    struct bpf_map *map) { return -EOPNOTSUPP; }
+static inline int bpf_map_offload_lookup_elem(struct bpf_map *map,
+					      void *key, void *value) { return -EOPNOTSUPP; }
+static inline int bpf_map_offload_update_elem(struct bpf_map *map,
+					      void *key, void *value, u64 flags) { return -EOPNOTSUPP; }
+static inline int bpf_map_offload_delete_elem(struct bpf_map *map,
+					      void *key) { return -EOPNOTSUPP; }
+static inline int bpf_map_offload_get_next_key(struct bpf_map *map,
+					       void *key, void *next_key) { return -EOPNOTSUPP; }
+static inline bool bpf_offload_dev_match(struct bpf_prog *prog,
+					 struct bpf_map *map) { return false; }
+#endif
 
-#if defined(CONFIG_NET) && defined(CONFIG_BPF_SYSCALL)
+#if defined(CONFIG_NET) && defined(CONFIG_BPF_SYSCALL) && defined(CONFIG_BPF_OFFLOAD)
 int bpf_prog_offload_init(struct bpf_prog *prog, union bpf_attr *attr);
 
 static inline bool bpf_prog_is_dev_bound(struct bpf_prog_aux *aux)
@@ -765,6 +787,7 @@ extern const struct bpf_func_proto bpf_get_smp_processor_id_proto;
 extern const struct bpf_func_proto bpf_get_numa_node_id_proto;
 extern const struct bpf_func_proto bpf_tail_call_proto;
 extern const struct bpf_func_proto bpf_ktime_get_ns_proto;
+extern const struct bpf_func_proto bpf_ktime_get_boot_ns_proto;
 extern const struct bpf_func_proto bpf_get_current_pid_tgid_proto;
 extern const struct bpf_func_proto bpf_get_current_uid_gid_proto;
 extern const struct bpf_func_proto bpf_get_current_comm_proto;
