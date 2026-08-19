@@ -26,6 +26,7 @@
 #include <linux/delay.h>
 #include <linux/irq.h>
 #include <linux/interrupt.h>
+#include <linux/pinctrl/consumer.h>
 #include <linux/slab.h>
 #include <linux/acpi.h>
 #include <linux/of.h>
@@ -44,6 +45,9 @@ struct goodix_ts_data {
 	int cfg_len;
 	struct gpio_desc *gpiod_int;
 	struct gpio_desc *gpiod_rst;
+	struct pinctrl *pinctrl;
+	struct pinctrl_state *int_gpio_state;
+	struct pinctrl_state *int_irq_state;
 	u16 id;
 	u16 version;
 	const char *cfg_name;
@@ -412,6 +416,12 @@ static int goodix_int_sync(struct goodix_ts_data *ts)
 {
 	int error;
 
+	if (ts->int_gpio_state) {
+		error = pinctrl_select_state(ts->pinctrl, ts->int_gpio_state);
+		if (error)
+			return error;
+	}
+
 	error = gpiod_direction_output(ts->gpiod_int, 0);
 	if (error)
 		return error;
@@ -421,6 +431,12 @@ static int goodix_int_sync(struct goodix_ts_data *ts)
 	error = gpiod_direction_input(ts->gpiod_int);
 	if (error)
 		return error;
+
+	if (ts->int_irq_state) {
+		error = pinctrl_select_state(ts->pinctrl, ts->int_irq_state);
+		if (error)
+			return error;
+	}
 
 	return 0;
 }
@@ -442,6 +458,12 @@ static int goodix_reset(struct goodix_ts_data *ts)
 	msleep(20);				/* T2: > 10ms */
 
 	/* HIGH: 0x28/0x29, LOW: 0xBA/0xBB */
+	if (ts->int_gpio_state) {
+		error = pinctrl_select_state(ts->pinctrl, ts->int_gpio_state);
+		if (error)
+			return error;
+	}
+
 	error = gpiod_direction_output(ts->gpiod_int, ts->client->addr == 0x14);
 	if (error)
 		return error;
@@ -492,6 +514,52 @@ static int goodix_get_gpio_config(struct goodix_ts_data *ts)
 	}
 
 	ts->gpiod_int = gpiod;
+
+	/*
+	 * P22H190 supplies named states for the GT9110 INT line.  The line is a
+	 * GPIO while the controller address is selected, then an EIC input when
+	 * the controller starts generating touch interrupts. Keep this optional
+	 * for the standard generic binding.
+	 */
+	ts->pinctrl = devm_pinctrl_get(dev);
+	if (IS_ERR(ts->pinctrl)) {
+		error = PTR_ERR(ts->pinctrl);
+		if (error == -EPROBE_DEFER)
+			return error;
+		ts->pinctrl = NULL;
+	} else {
+		ts->int_gpio_state = pinctrl_lookup_state(ts->pinctrl,
+						   "gpio144_output");
+		if (IS_ERR(ts->int_gpio_state))
+			ts->int_gpio_state = NULL;
+
+		ts->int_irq_state = pinctrl_lookup_state(ts->pinctrl,
+						  "gpio144_extint0");
+		if (IS_ERR(ts->int_irq_state))
+			ts->int_irq_state = NULL;
+	}
+
+	/*
+	 * The P22H190 GT9110 node uses irq-gpios for the address-select pin
+	 * during reset and irq-int-gpios for the EIC line.  The generic binding
+	 * normally obtains client->irq from an interrupts property, which this
+	 * vendor DT node does not have.
+	 */
+	gpiod = devm_gpiod_get_optional(dev, "irq-int", GPIOD_IN);
+	if (IS_ERR(gpiod)) {
+		error = PTR_ERR(gpiod);
+		if (error != -EPROBE_DEFER)
+			dev_dbg(dev, "Failed to get irq-int GPIO: %d\n", error);
+		return error;
+	}
+	if (gpiod) {
+		error = gpiod_to_irq(gpiod);
+		if (error < 0) {
+			dev_err(dev, "Failed to map irq-int GPIO: %d\n", error);
+			return error;
+		}
+		ts->client->irq = error;
+	}
 
 	/* Get the reset line GPIO pin number */
 	gpiod = devm_gpiod_get_optional(dev, GOODIX_GPIO_RST_NAME, GPIOD_IN);
@@ -828,6 +896,14 @@ static int __maybe_unused goodix_suspend(struct device *dev)
 	goodix_free_irq(ts);
 
 	/* Output LOW on the INT pin for 5 ms */
+	if (ts->int_gpio_state) {
+		error = pinctrl_select_state(ts->pinctrl, ts->int_gpio_state);
+		if (error) {
+			goodix_request_irq(ts);
+			return error;
+		}
+	}
+
 	error = gpiod_direction_output(ts->gpiod_int, 0);
 	if (error) {
 		goodix_request_irq(ts);
@@ -841,6 +917,8 @@ static int __maybe_unused goodix_suspend(struct device *dev)
 	if (error) {
 		dev_err(&ts->client->dev, "Screen off command failed\n");
 		gpiod_direction_input(ts->gpiod_int);
+		if (ts->int_irq_state)
+			pinctrl_select_state(ts->pinctrl, ts->int_irq_state);
 		goodix_request_irq(ts);
 		return -EAGAIN;
 	}
@@ -869,6 +947,12 @@ static int __maybe_unused goodix_resume(struct device *dev)
 	 * Exit sleep mode by outputting HIGH level to INT pin
 	 * for 2ms~5ms.
 	 */
+	if (ts->int_gpio_state) {
+		error = pinctrl_select_state(ts->pinctrl, ts->int_gpio_state);
+		if (error)
+			return error;
+	}
+
 	error = gpiod_direction_output(ts->gpiod_int, 1);
 	if (error)
 		return error;
@@ -905,6 +989,7 @@ MODULE_DEVICE_TABLE(acpi, goodix_acpi_match);
 
 #ifdef CONFIG_OF
 static const struct of_device_id goodix_of_match[] = {
+	{ .compatible = "goodix,gt9xx" },
 	{ .compatible = "goodix,gt911" },
 	{ .compatible = "goodix,gt9110" },
 	{ .compatible = "goodix,gt912" },
