@@ -16,3 +16,24 @@ See Documentation/00-INDEX for a list of what is contained in each file.
 Please read the Documentation/process/changes.rst file, as it contains the
 requirements for building and running the kernel, and information about
 the problems which may result by upgrading your kernel.
+
+## P22H190 cloud builds
+
+The `Build P22H190 kernel` GitHub Actions workflow downloads Google's
+official Android clang r383902 toolchain, installs the host dependencies, and
+runs `scripts/build-p22h190.sh all`. A successful push to `main` or manual
+workflow dispatch creates a prerelease containing:
+
+* an AnyKernel3 flashable package with the KPM-patched kernel and modules;
+* a rebuilt `socko.img` with kernel-compatible module CRCs and vermagic;
+* `SHA256SUMS` and the build log as workflow artifacts.
+
+The same build logic can be run locally after preparing the toolchain and
+packaging inputs:
+
+```sh
+ANDROID_CLANG_DIR="$HOME/android-clang-r383902b/clang-r383902/bin" \
+KPM_PATCHER="$HOME/kpm/patch_linux" \
+ANYKERNEL_DIR="$PWD/out/AnyKernel3" \
+./scripts/build-p22h190.sh all
+```
