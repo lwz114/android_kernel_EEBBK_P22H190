@@ -501,12 +501,6 @@
 };
 
 &ion {
-	heap@1 {
-		reg = <1>;
-		label = "system";
-		type = <0>;
-	};
-
 	heap@3 {
 		reg = <3>;
 		label = "carveout_fb";
