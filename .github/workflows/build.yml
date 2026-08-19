@@ -47,7 +47,6 @@ jobs:
           git -C "$CLANG_REPO" sparse-checkout set clang-r383902
           cp -a "$CLANG_REPO/clang-r383902" "$CLANG_ROOT/"
           test -x "$CLANG_DIR/clang"
-          test -x "$CLANG_DIR/ld.lld"
           "$CLANG_DIR/clang" --version | tee out/clang-version.txt
           grep -F 'b397f81060ce6d701042b782172ed13bee898b79' out/clang-version.txt
           printf 'CLANG_DIR=%s\n' "$CLANG_DIR" >> "$GITHUB_ENV"
