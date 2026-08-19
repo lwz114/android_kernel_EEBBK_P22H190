@@ -64,7 +64,7 @@ jobs:
           fi
           sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 update
           sudo apt-get -o Acquire::Retries=2 -o Acquire::http::Timeout=30 install -y \
-            bc bison cpio device-tree-compiler e2fsprogs flex fuse3 \
+            bc bison cpio device-tree-compiler e2fsprogs fuse2fs flex fuse3 \
             gcc-aarch64-linux-gnu git kmod libelf-dev libncurses-dev \
             libssl-dev lld perl python3 rsync unzip zip
 
