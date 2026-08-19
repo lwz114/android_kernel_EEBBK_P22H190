@@ -22,6 +22,10 @@
 #include "sprd-asoc-card-utils.h"
 #include "sprd-asoc-common.h"
 
+#if IS_ENABLED(CONFIG_SND_SOC_FS15XX)
+extern int mt6357_fs15xx_sence_load(int scene);
+#endif
+
 struct sprd_asoc_ext_hook_map {
 	const char *name;
 	sprd_asoc_hook_func hook;
@@ -53,17 +57,6 @@ static struct sprd_asoc_hook_spk_priv hook_spk_priv;
 #define GENERAL_SPK_MODE 10
 
 #define EN_LEVEL 1
-
-#define AW87XXX_LEFT_DEV_INDEX 0
-#define AW87XXX_RIGHT_DEV_INDEX 1
-
-static char aw87xxx_music_profile[] = "Music";
-static char aw87xxx_receiver_profile[] = "Receiver";
-static char aw87xxx_off_profile[] = "Off";
-
-#if IS_REACHABLE(CONFIG_SND_SOC_AW87XXX)
-extern int aw87xxx_set_profile(int dev_index, char *profile);
-#endif
 
 static int select_mode;
 
@@ -175,49 +168,17 @@ static int hook_general_spk(int id, int on)
 	return HOOK_OK;
 }
 
-static int hook_aw87xxx_set(int dev_index, char *profile)
-{
-#if IS_REACHABLE(CONFIG_SND_SOC_AW87XXX)
-	int ret;
-
-	ret = aw87xxx_set_profile(dev_index, profile);
-	if (ret < 0)
-		pr_err("%s dev_index %d profile %s failed: %d\n",
-		       __func__, dev_index, profile, ret);
-
-	return ret;
-#else
-	pr_info("%s AW87xxx support disabled\n", __func__);
-	return -ENODEV;
-#endif
-}
-
 static int hook_aw87xxx_smart_spk(int id, int on)
 {
-	char *profile = on ? aw87xxx_music_profile : aw87xxx_off_profile;
-	int ret0 = 0, ret1 = 0;
-
-	if (id == BOARD_FUNC_EAR)
-		profile = on ? aw87xxx_receiver_profile : aw87xxx_off_profile;
-
-	pr_info("%s id: %d, profile: %s, on: %d\n",
-		__func__, id, profile, on);
-
-	if (id == BOARD_FUNC_SPK) {
-		ret0 = hook_aw87xxx_set(AW87XXX_LEFT_DEV_INDEX, profile);
-		ret1 = hook_aw87xxx_set(AW87XXX_RIGHT_DEV_INDEX, profile);
-	} else if (id == BOARD_FUNC_SPK1) {
-		ret1 = hook_aw87xxx_set(AW87XXX_RIGHT_DEV_INDEX, profile);
-	} else if (id == BOARD_FUNC_EAR) {
-		ret0 = hook_aw87xxx_set(AW87XXX_LEFT_DEV_INDEX, profile);
-	} else {
-		return HOOK_BPY;
-	}
-
-	if (ret0 < 0 && ret1 < 0)
-		return ret0;
-
+	/* The P22 factory hook is named for AW87xxx, but its active amps are
+	 * the two FourSemi FS15xx devices on I2C2. */
+#if IS_ENABLED(CONFIG_SND_SOC_FS15XX)
+	return mt6357_fs15xx_sence_load(on ? 0 : 5);
+#else
+	(void)id;
+	(void)on;
 	return HOOK_OK;
+#endif
 }
 
 static struct sprd_asoc_ext_hook_map ext_hook_arr[] = {

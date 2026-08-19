@@ -27,6 +27,10 @@
 
 #include "sprd-asoc-card-utils.h"
 #include "sprd-asoc-common.h"
+
+#if IS_ENABLED(CONFIG_SND_SOC_FS15XX)
+extern void fsm_add_card_controls(struct snd_soc_card *card);
+#endif
 #include "sprd-headset.h"
 #include "sprd-audio.h"
 
@@ -797,6 +801,11 @@ int asoc_sprd_card_probe(struct platform_device *pdev,
 	}
 
 	snd_soc_card_set_drvdata(&priv->snd_card, priv);
+
+#if IS_ENABLED(CONFIG_SND_SOC_FS15XX)
+	/* The factory P22 card keeps the FourSemi amps as auxiliary I2C devices. */
+	fsm_add_card_controls(&priv->snd_card);
+#endif
 
 	*card = &priv->snd_card;
 

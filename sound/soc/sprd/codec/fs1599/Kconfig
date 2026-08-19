@@ -1,0 +1,8 @@
+config SND_SOC_FS15XX
+	tristate "FourSemi FS15xx/FS1599 smart power amplifier"
+	depends on I2C
+	select FW_LOADER
+	default n
+	help
+	  This option enables the FourSemi FS15xx/FS1599 I2C smart
+	  power-amplifier driver used by EEBBK P22H190.
