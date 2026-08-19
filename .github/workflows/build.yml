@@ -22,8 +22,6 @@ jobs:
       DEFCONFIG: ums512-p22h190_defconfig
       CLANG_TRIPLE: aarch64-linux-gnu-
       CROSS_COMPILE: aarch64-linux-gnu-
-      CLANG_ROOT: ${{ runner.temp }}/clang-r383902
-      CLANG_DIR: ${{ runner.temp }}/clang-r383902/clang-r383902/bin
       BUILD_DIR: ${{ github.workspace }}/out/ums512-p22h190
       RELEASE_DIR: ${{ github.workspace }}/out/release
       ANYKERNEL_DIR: ${{ github.workspace }}/out/AnyKernel3
@@ -41,16 +39,20 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          CLANG_ROOT="$RUNNER_TEMP/clang-r383902"
+          CLANG_DIR="$CLANG_ROOT/clang-r383902/bin"
+          CLANG_REPO="$RUNNER_TEMP/clang-repo"
           mkdir -p "$CLANG_ROOT" out
           git clone --depth=1 --filter=blob:none --sparse \
             --branch android12-release \
             https://android.googlesource.com/platform/prebuilts/clang/host/linux-x86 \
-            "${{ runner.temp }}/clang-repo"
-          git -C "${{ runner.temp }}/clang-repo" sparse-checkout set clang-r383902
-          cp -a "${{ runner.temp }}/clang-repo/clang-r383902" "$CLANG_ROOT/"
+            "$CLANG_REPO"
+          git -C "$CLANG_REPO" sparse-checkout set clang-r383902
+          cp -a "$CLANG_REPO/clang-r383902" "$CLANG_ROOT/"
           test -x "$CLANG_DIR/clang"
           "$CLANG_DIR/clang" --version | tee out/clang-version.txt
           grep -F 'b397f81060ce6d701042b782172ed13bee898b79' out/clang-version.txt
+          printf 'CLANG_DIR=%s\n' "$CLANG_DIR" >> "$GITHUB_ENV"
 
       - name: Install build and packaging dependencies
         run: |
