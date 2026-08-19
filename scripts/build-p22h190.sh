@@ -30,7 +30,13 @@ esac
 SRC_DIR="${P22H190_SOURCE_DIR:-$(cd "$(dirname "$0")/.." && pwd -P)}"
 OUT_DIR="${P22H190_BUILD_DIR:-$SRC_DIR/out/ums512-p22h190}"
 DEST_DIR="${P22H190_OUTPUT_DIR:-$SRC_DIR/out/release}"
-TC_DIR="${ANDROID_CLANG_DIR:-$SRC_DIR/out/toolchains/clang-r383902/bin}"
+if [[ -n "${ANDROID_CLANG_DIR:-}" ]]; then
+    TC_DIR="$ANDROID_CLANG_DIR"
+elif [[ -x /usr/bin/clang && -x /usr/bin/ld.lld ]]; then
+    TC_DIR="/usr"
+else
+    TC_DIR="$SRC_DIR/out/toolchains/clang-r383902/bin"
+fi
 KPM_PATCHER="${KPM_PATCHER:-$SRC_DIR/out/tools/patch_linux}"
 MODULE_METADATA_PATCHER="${MODULE_METADATA_PATCHER:-$SRC_DIR/tools/patch-module-metadata.pl}"
 SOCKO_TEMPLATE="${SOCKO_TEMPLATE:-$SRC_DIR/prebuilts/p22h190/socko.factory.img}"
