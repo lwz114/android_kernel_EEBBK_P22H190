@@ -1069,36 +1069,6 @@ static ssize_t cabc_state_write(struct file *fp, struct kobject *kobj,
 
 static BIN_ATTR_RW(cabc_state, 8);
 
-static ssize_t cabc_disable_read(struct file *fp, struct kobject *kobj,
-			struct bin_attribute *attr, char *buf,
-			loff_t off, size_t count)
-{
-	struct device *dev = container_of(kobj, struct device, kobj);
-	struct sprd_dpu *dpu = dev_get_drvdata(dev);
-	struct dpu_context *ctx = &dpu->ctx;
-	u32 disabled = 1;
-
-	if (!dpu->core->enhance_get)
-		return -EIO;
-
-	if (off >= attr->size)
-		return 0;
-
-	if (off + count > attr->size)
-		count = attr->size - off;
-
-	down(&ctx->cabc_lock);
-	dpu->core->enhance_get(ctx, ENHANCE_CFG_ID_CABC_STATE, &disabled);
-	up(&ctx->cabc_lock);
-
-	disabled = (disabled == CABC_DISABLED) ? 1 : 0;
-	memset(buf, 0, count);
-	memcpy(buf, &disabled, min_t(size_t, count, sizeof(disabled)));
-
-	return count;
-}
-static BIN_ATTR_RO(cabc_disable, 4);
-
 static ssize_t hsv_read(struct file *fp, struct kobject *kobj,
 			struct bin_attribute *attr, char *buf,
 			loff_t off, size_t count)
@@ -1412,7 +1382,6 @@ static struct bin_attribute *pq_bin_attrs[] = {
 	&bin_attr_cabc_run,
 	&bin_attr_cabc_cur_bl,
 	&bin_attr_cabc_state,
-	&bin_attr_cabc_disable,
 	&bin_attr_lut3d,
 	&bin_attr_enable,
 	&bin_attr_disable,
