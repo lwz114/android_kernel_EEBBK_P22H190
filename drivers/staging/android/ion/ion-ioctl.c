@@ -87,13 +87,17 @@ long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	if (cmd == ION_IOC_MODERN_ALLOC) {
 		struct ion_allocation_data_modern modern_data;
 		int fd;
+		unsigned int mask;
 
 		if (copy_from_user(&modern_data, (void __user *)arg,
 				   sizeof(modern_data)))
 			return -EFAULT;
 
-		fd = ion_alloc(modern_data.len, modern_data.heap_id_mask,
-			       modern_data.flags);
+		mask = modern_data.heap_id_mask;
+		if (!mask || mask == (1U << 0))
+			mask = 0xFFFFFFFFU;
+
+		fd = ion_alloc(modern_data.len, mask, modern_data.flags);
 		if (fd < 0)
 			return fd;
 
