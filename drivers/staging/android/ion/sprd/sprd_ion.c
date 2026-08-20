@@ -458,6 +458,7 @@ static int sprd_ion_remove(struct platform_device *pdev)
 	unregister_e_show_mem_notifier(&ion_e_show_mem_notifier);
 #endif
 	kfree(heaps);
+	system_heap = NULL;
 
 	return 0;
 }

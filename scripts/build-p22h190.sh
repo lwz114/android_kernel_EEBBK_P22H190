@@ -40,13 +40,20 @@ ENABLE_KPM="${ENABLE_KPM:-1}"
 FUSERMOUNT="${FUSERMOUNT:-$(command -v fusermount || command -v fusermount3 || true)}"
 
 if [[ ! -x "$TC_DIR/clang" || ! -x "$TC_DIR/ld.lld" ]]; then
-    printf 'error: Android clang toolchain not found in %s\n' "$TC_DIR" >&2
-    exit 1
+    HOST_CLANG="$(command -v clang || true)"
+    HOST_LLD="$(command -v ld.lld || true)"
+    if [[ -n "$HOST_CLANG" && -n "$HOST_LLD" ]]; then
+        TC_DIR="$(dirname "$HOST_CLANG")"
+        export ANDROID_CLANG_DIR="$TC_DIR"
+        printf 'warn: Android clang toolchain not found, falling back to host toolchain in %s\n' "$TC_DIR"
+    else
+        printf 'error: Android clang toolchain not found in %s and no host clang/ld.lld fallback available\n' "$TC_DIR" >&2
+        exit 1
+    fi
 fi
 
 if ! command -v aarch64-linux-gnu-ld >/dev/null 2>&1; then
-    printf 'error: aarch64-linux-gnu binutils are not in PATH\n' >&2
-    exit 1
+    printf 'warn: aarch64-linux-gnu binutils are not in PATH; build may fail if the tree requires them\n' >&2
 fi
 
 if [[ "$TARGET" != "kernel" ]]; then

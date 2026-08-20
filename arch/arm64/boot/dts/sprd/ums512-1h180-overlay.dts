@@ -16,7 +16,7 @@
 #include <dt-bindings/clock/sprd,sharkl5pro-clk.h>
 #include <dt-bindings/mfd/sprd,sc2730-regs.h>
 #include <dt-bindings/mfd/sprd,sc2730-mask.h>
-#include "lcd/lcd_ft8201ab_boe_mipi_fhd_bbk_H180.dtsi"
+#include "lcd/lcd_ft8201ab_boe_mipi_fhd_bbk_H190.dtsi"
 #include "lcd/lcd_td4310_truly_mipi_fhd.dtsi"
 #include "lcd/lcd_ssd2092_truly_mipi_fhd.dtsi"
 #include "lcd/lcd_dummy_mipi.dtsi"
@@ -25,7 +25,7 @@
 
 	model = "Unisoc UMS512 1H10 board";
 	compatible = "sprd,ums512-1h10";
-	sprd,sc-id = "ums512 1h180 1000";
+	sprd,sc-id = "ums512 1h190 1000";
 
 	fragment {
 		target-path = "/";
@@ -382,7 +382,7 @@
 };
 
 &chosen {
-	bootargs_ext = "androidboot.hardware=ums512_1h180 androidboot.dtbo_idx=0";
+	bootargs_ext = "androidboot.hardware=ums512_1h190 androidboot.dtbo_idx=3";
 };
 
 &vbmeta {
