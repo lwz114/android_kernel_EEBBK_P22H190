@@ -95,7 +95,7 @@ long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 
 		mask = modern_data.heap_id_mask;
 		if (!mask || mask == (1U << 0))
-			mask = 0xFFFFFFFFU;
+			mask = (1U << 3);
 
 		fd = ion_alloc(modern_data.len, mask, modern_data.flags);
 		if (fd < 0)
