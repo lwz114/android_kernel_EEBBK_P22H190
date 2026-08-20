@@ -501,11 +501,19 @@
 };
 
 &ion {
+	
 	heap@3 {
 		reg = <3>;
 		label = "carveout_fb";
 		type = <2>;
 		memory-region = <&fb_reserved>;
+	};
+
+	
+	heap@0 {
+		reg = <0>;
+		label = "system";
+		type = <0>; 
 	};
 };
 
