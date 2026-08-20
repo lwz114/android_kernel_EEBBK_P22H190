@@ -245,6 +245,9 @@ CONFIG_TRACEPOINTS=y
 # ReSukiSU kernel integration; SUSFS is disabled for Droidspaces compatibility.
 CONFIG_KSU=y
 # CONFIG_KSU_DEBUG is not set
+# ReSukiSU Tracepoint hook is GKI 2.0 only; use the legacy-compatible hook.
+# CONFIG_KSU_TRACEPOINT_HOOK is not set
+CONFIG_KSU_MANUAL_HOOK=y
 # CONFIG_KSU_SUSFS is not set
 # CONFIG_KSU_SUSFS_SUS_PATH is not set
 # CONFIG_KSU_SUSFS_SUS_MOUNT is not set
