@@ -42,7 +42,7 @@
 					sprd,sleep-out-command = [05 78 00 01 11 05 32 00 01 29];
 					sprd,pwm-diming-off-command = [05 00 01 00 00 00 00];
 					sprd,deep-sleep-in-command = [05 00 01 00 10 00 00];
-					sprd,deep-sleep-in = [05 00 01 00 10 00 00];
+					sprd,deep-sleep-in = <1>;
 					sprd,reset-delay-vspn-ms = <10>;
 
 					display-timings {
