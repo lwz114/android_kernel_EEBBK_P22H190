@@ -112,7 +112,14 @@ int fsm_firmware_init_sync(char *fw_name)
 
 	g_fsm_fw_init = 0;
 	pr_info("loading %s in sync mode", fw_name);
-	ret = request_firmware(&fw_cont, fw_name, dev);
+	/*
+	 * FS1599 probes before Android mounts /vendor.  The generic
+	 * request_firmware() path then falls back to the userspace helper,
+	 * which blocks this probe for its ~60 second timeout.  The audio HAL
+	 * retries after /vendor is mounted, so do a direct lookup here and
+	 * fail fast during early boot.
+	 */
+	ret = request_firmware_direct(&fw_cont, fw_name, dev);
 	if (ret) {
 		pr_err("request %s failed: %d\n", fw_name, ret);
 		return ret;
