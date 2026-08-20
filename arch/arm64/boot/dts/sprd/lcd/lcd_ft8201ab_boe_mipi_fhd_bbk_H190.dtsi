@@ -54,6 +54,7 @@
 							vfront-porch = <12>;
 							hsync-len = <10>;
 							vsync-len = <4>;
+
 						};
 					};
 				};

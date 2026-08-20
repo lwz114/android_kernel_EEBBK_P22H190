@@ -21,6 +21,24 @@
 
 #include "ion.h"
 
+/*
+ * Modern Android (11+) ION allocation ioctl: gralloc4 submits the request
+ * as a 24-byte structure (0xc0184900) that carries the fd it expects back.
+ * The legacy ION_IOC_ALLOC wire format is identical (len/mask/flags/fd),
+ * but expose an explicit alias so gralloc4's request is handled regardless
+ * of which userspace header it was built against.
+ */
+struct ion_allocation_data_modern {
+	__u64 len;
+	__u32 heap_id_mask;
+	__u32 flags;
+	__u32 fd;
+	__u32 unused;
+};
+
+#define ION_IOC_MODERN_ALLOC	_IOWR(ION_IOC_MAGIC, 0, \
+				      struct ion_allocation_data_modern)
+
 union ion_ioctl_arg {
 	struct ion_allocation_data allocation;
 	struct ion_heap_query query;
@@ -58,6 +76,34 @@ long ion_ioctl(struct file *filp, unsigned int cmd, unsigned long arg)
 	int ret = 0;
 	unsigned int dir;
 	union ion_ioctl_arg data;
+
+	/*
+	 * gralloc4 issues the allocation as the 24-byte modern ioctl
+	 * (0xc0184900).  Its layout matches ion_allocation_data; handle it
+	 * explicitly so the returned fd is written back into the caller's
+	 * buffer exactly as gralloc4 expects, without disturbing the legacy
+	 * ION_IOC_ALLOC / vendor-specific paths.
+	 */
+	if (cmd == ION_IOC_MODERN_ALLOC) {
+		struct ion_allocation_data_modern modern_data;
+		int fd;
+
+		if (copy_from_user(&modern_data, (void __user *)arg,
+				   sizeof(modern_data)))
+			return -EFAULT;
+
+		fd = ion_alloc(modern_data.len, modern_data.heap_id_mask,
+			       modern_data.flags);
+		if (fd < 0)
+			return fd;
+
+		modern_data.fd = fd;
+		if (copy_to_user((void __user *)arg, &modern_data,
+				 sizeof(modern_data)))
+			return -EFAULT;
+
+		return 0;
+	}
 
 	dir = ion_ioctl_dir(cmd);
 
