@@ -1,71 +1,59 @@
 /*
- * LCD panel config: BOE FT8201AB MIPI FHD 1280x1752 — EEBBK 1H180 (EEBBK A3)
- * Values extracted verbatim from the factory DTBO overlay (dtbo_idx=2,
- * sc-id "ums512 1h190 1000") decompiled from the device.
+ * LCD panel config: Himax8279 MIPI FHD — EEBBK 1H190 (EEBBK X2)
+ * Values merged and corrected from factory DTBO decompiled source.
  */
 / {
 	fragment {
 		target-path = "/";
 		__overlay__ {
 			lcds {
-				lcd_ft8201ab_boe_mipi_fhd_bbk_H190: lcd_ft8201ab_boe_mipi_fhd_bbk_H190 {
+				lcd_himax8279_boe_mipi_fhd_bbk_H190: lcd_himax8279_boe_mipi_fhd_bbk_H190 {
 
-					sprd,dsi-work-mode = <1>;   /* video burst mode */
-					sprd,dsi-lane-number = <4>;
+					sprd,dsi-work-mode = <0x01>;   /* video burst mode */
+					sprd,dsi-lane-number = <0x04>;
 					sprd,dsi-color-format = "rgb888";
 
-					sprd,phy-bit-clock = <1382000>; /* kbps (0x151670) */
-					sprd,phy-escape-clock = <20000>;/* kHz (0x4e20) */
+					sprd,phy-bit-clock = <0xdf5de>;
+					sprd,phy-escape-clock = <0x4e20>;
 
-					sprd,width-mm = <145>;   /* 0x91 */
-					sprd,height-mm = <198>;  /* 0xc6 */
+					sprd,width-mm = <0x87>;
+					sprd,height-mm = <0xd8>;
 
-					sprd,esd-check-mode = <0>;
-					sprd,esd-check-enable = <1>;
-					sprd,esd-check-period = <1000>; /* 0x3e8 */
-					sprd,esd-check-register = <0x0A>;
-					sprd,esd-check-value = <0x9C>;
+					sprd,esd-check-mode = <0x00>;
+					sprd,esd-check-enable = <0x01>;
+					sprd,esd-check-period = <0x7d0>;
+					sprd,esd-check-register = <0x0a>;
+					sprd,esd-check-value = <0x14>;
 
-					sprd,reset-on-sequence = <1 20>, <0 20>, <1 70>;
-					sprd,reset-off-sequence = <0 5>;
+					sprd,reset-on-sequence = <0x01 0x14 0x00 0x14 0x01 0x14>;
+					sprd,reset-off-sequence = <0x00 0x05>;
 
 					sprd,use-dcs-write;
+					sprd,dpi-clk-div = <0x06>;
+					sprd,video-lp-cmd-enable = <0x01>;
+					sprd,hporch-lp-disable = <0x01>;
+
 
 					sprd,initial-command = [
-						05 55 00 01 11
-						05 08 00 01 29
-						29 00 00 02 00 00
-						29 00 00 04 FF 82 01 01
-						29 00 00 02 00 80
-						29 00 00 03 FF 82 01
-						29 00 00 02 00 88
-						29 00 00 02 B0 07
-						29 00 00 02 00 00
-						29 00 00 02 FA 02
+						05 32 00 01 10 15 00 00 02 b0 05 15 00 00 02 c0 01 15 00 00 02 c2 01 15 00 00 02 d9 01 15 00 00 02 db 01 15 00 00 02 b0 00 15 00 00 02 b2 40 15 00 00 02 b3 88 15 00 00 02 b6 03 15 00 00 02 ba 8b 15 00 00 02 bf 1a 15 00 00 02 c0 0f 15 00 00 02 c2 1f 15 00 00 02 c3 02 15 00 00 02 c4 1f 15 00 00 02 c5 02 15 00 00 02 b0 01 15 00 00 02 e0 26 15 00 00 02 e1 26 15 00 00 02 dc 00 15 00 00 02 dd 00 15 00 00 02 cc 26 15 00 00 02 cd 26 15 00 00 02 c8 00 15 00 00 02 c9 00 15 00 00 02 d2 03 15 00 00 02 d3 03 15 00 00 02 e6 04 15 00 00 02 e7 04 15 00 00 02 c4 09 15 00 00 02 c5 09 15 00 00 02 d8 0a 15 00 00 02 d9 0a 15 00 00 02 c2 0b 15 00 00 02 c3 0b 15 00 00 02 d6 0c 15 00 00 02 d7 0c 15 00 00 02 c0 05 15 00 00 02 c1 05 15 00 00 02 d4 06 15 00 00 02 d5 06 15 00 00 02 ca 07 15 00 00 02 cb 07 15 00 00 02 de 08 15 00 00 02 df 08 15 00 00 02 b0 03 15 00 00 02 c8 0b 15 00 00 02 c9 07 15 00 00 02 c3 00 15 00 00 02 e7 00 15 00 00 02 c5 2a 15 00 00 02 de 2a 15 00 00 02 ca 43 15 00 00 02 c9 07 15 00 00 02 e4 c0 15 00 00 02 e5 0d 15 00 00 02 cb 00 15 00 00 02 b0 02 15 00 00 02 c0 00 15 00 00 02 c1 10 15 00 00 02 c2 19 15 00 00 02 c3 25 15 00 00 02 c4 27 15 00 00 02 c5 25 15 00 00 02 c6 21 15 00 00 02 c7 1c 15 00 00 02 c8 17 15 00 00 02 c9 0d 15 00 00 02 ca 0a 15 00 00 02 cb 07 15 00 00 02 cc 06 15 00 00 02 cd 13 15 00 00 02 ce 11 15 00 00 02 cf 18 15 00 00 02 d0 07 15 00 00 02 d2 00 15 00 00 02 d3 10 15 00 00 02 d4 19 15 00 00 02 d5 25 15 00 00 02 d6 27 15 00 00 02 d7 25 15 00 00 02 d8 21 15 00 00 02 d9 1c 15 00 00 02 da 17 15 00 00 02 db 0d 15 00 00 02 dc 0a 15 00 00 02 dd 07 15 00 00 02 de 06 15 00 00 02 df 13 15 00 00 02 e0 11 15 00 00 02 e1 18 15 00 00 02 e2 07 15 00 00 02 b0 06 15 00 00 02 b8 a5 15 00 00 02 c0 a5 15 00 00 02 c7 0f 15 00 00 02 d5 32 15 00 00 02 b8 00 15 00 00 02 c0 00 15 00 00 02 bc 00 15 00 00 02 b0 09 15 00 00 02 b1 00 15 00 00 02 b2 05 15 00 00 02 b3 11 15 00 00 02 b4 2e 15 00 00 02 b5 51 15 00 00 02 b6 74 15 00 00 02 b7 c8 15 00 00 02 b8 2a 15 00 00 02 b9 c5 15 00 00 02 ba 3c 15 00 00 02 bb ce 15 00 00 02 bc 29 15 00 00 02 bd 2b 15 00 00 02 be 74 15 00 00 02 bf ae 15 00 00 02 c0 ca 15 00 00 02 c1 e3 15 00 00 02 c2 eb 15 00 00 02 c3 f2 15 00 00 02 c4 f5 15 00 00 02 c5 f8 15 00 00 02 c6 fa 15 00 00 02 c7 fb 15 00 00 02 c8 fc 15 00 00 02 c9 00 15 00 00 02 ca 01 15 00 00 02 cb 6b 15 00 00 02 cc ff 15 00 00 02 cd ff 15 00 00 02 ce ff 15 00 00 02 b0 0c 15 00 00 02 b1 00 15 00 00 02 b2 05 15 00 00 02 b3 11 15 00 00 02 b4 2e 15 00 00 02 b5 51 15 00 00 02 b6 74 15 00 00 02 b7 c8 15 00 00 02 b8 2a 15 00 00 02 b9 c5 15 00 00 02 ba 3c 15 00 00 02 bb ce 15 00 00 02 bc 29 15 00 00 02 bd 2b 15 00 00 02 be 74 15 00 00 02 bf ae 15 00 00 02 c0 ca 15 00 00 02 c1 e3 15 00 00 02 c2 eb 15 00 00 02 c3 f2 15 00 00 02 c4 f5 15 00 00 02 c5 f8 15 00 00 02 c6 fa 15 00 00 02 c7 fb 15 00 00 02 c8 fc 15 00 00 02 c9 00 15 00 00 02 ca 01 15 00 00 02 cb 6b 15 00 00 02 cc ff 15 00 00 02 cd ff 15 00 00 02 ce ff 15 00 00 02 b0 08 15 00 00 02 b1 00 15 00 00 02 b2 05 15 00 00 02 b3 11 15 00 00 02 b4 2e 15 00 00 02 b5 51 15 00 00 02 b6 74 15 00 00 02 b7 c8 15 00 00 02 b8 2a 15 00 00 02 b9 c5 15 00 00 02 ba 3c 15 00 00 02 bb ce 15 00 00 02 bc 29 15 00 00 02 bd 2b 15 00 00 02 be 74 15 00 00 02 bf ae 15 00 00 02 c0 ca 15 00 00 02 c1 e3 15 00 00 02 c2 eb 15 00 00 02 c3 f2 15 00 00 02 c4 f5 15 00 00 02 c5 f8 15 00 00 02 c6 fa 15 00 00 02 c7 fb 15 00 00 02 c8 fc 15 00 00 02 c9 00 15 00 00 02 ca 01 15 00 00 02 cb 6b 15 00 00 02 cc ff 15 00 00 02 cd ff 15 00 00 02 ce ff 15 00 00 02 b0 0b 15 00 00 02 b1 00 15 00 00 02 b2 05 15 00 00 02 b3 11 15 00 00 02 b4 2e 15 00 00 02 b5 51 15 00 00 02 b6 74 15 00 00 02 b7 c8 15 00 00 02 b8 2a 15 00 00 02 b9 c5 15 00 00 02 ba 3c 15 00 00 02 bb ce 15 00 00 02 bc 29 15 00 00 02 bd 2b 15 00 00 02 be 74 15 00 00 02 bf ae 15 00 00 02 c0 ca 15 00 00 02 c1 e3 15 00 00 02 c2 eb 15 00 00 02 c3 f2 15 00 00 02 c4 f5 15 00 00 02 c5 f8 15 00 00 02 c6 fa 15 00 00 02 c7 fb 15 00 00 02 c8 fc 15 00 00 02 c9 00 15 00 00 02 ca 01 15 00 00 02 cb 6b 15 00 00 02 cc ff 15 00 00 02 cd ff 15 00 00 02 ce ff 15 00 00 02 b0 07 15 00 00 02 b1 00 15 00 00 02 b2 05 15 00 00 02 b3 11 15 00 00 02 b4 2e 15 00 00 02 b5 51 15 00 00 02 b6 74 15 00 00 02 b7 c8 15 00 00 02 b8 2a 15 00 00 02 b9 c5 15 00 00 02 ba 3c 15 00 00 02 bb ce 15 00 00 02 bc 29 15 00 00 02 bd 2b 15 00 00 02 be 74 15 00 00 02 bf ae 15 00 00 02 c0 ca 15 00 00 02 c1 e3 15 00 00 02 c2 eb 15 00 00 02 c3 f2 15 00 00 02 c4 f5 15 00 00 02 c5 f8 15 00 00 02 c6 fa 15 00 00 02 c7 fb 15 00 00 02 c8 fc 15 00 00 02 c9 00 15 00 00 02 ca 01 15 00 00 02 cb 6b 15 00 00 02 cc ff 15 00 00 02 cd ff 15 00 00 02 ce ff 15 00 00 02 b0 0a 15 00 00 02 b1 00 15 00 00 02 b2 05 15 00 00 02 b3 11 15 00 00 02 b4 2e 15 00 00 02 b5 51 15 00 00 02 b6 74 15 00 00 02 b7 c8 15 00 00 02 b8 2a 15 00 00 02 b9 c5 15 00 00 02 ba 3c 15 00 00 02 bb ce 15 00 00 02 bc 29 15 00 00 02 bd 2b 15 00 00 02 be 74 15 00 00 02 bf ae 15 00 00 02 c0 ca 15 00 00 02 c1 e3 15 00 00 02 c2 eb 15 00 00 02 c3 f2 15 00 00 02 c4 f5 15 00 00 02 c5 f8 15 00 00 02 c6 fa 15 00 00 02 c7 fb 15 00 00 02 c8 fc 15 00 00 02 c9 00 15 00 00 02 ca 01 15 00 00 02 cb 6b 15 00 00 02 cc ff 15 00 00 02 cd ff 15 00 00 02 ce ff 15 00 00 02 b0 00 15 00 00 02 b3 08 15 00 00 02 b0 04 15 00 00 02 b5 02 15 00 00 02 b6 01 15 00 00 02 b8 ff 15 00 00 02 b0 05 15 00 00 02 b1 e1 15 00 00 02 bc 20 15 00 00 02 b0 00 05 78 00 01 11 05 14 00 01 29
 					];
-					sprd,sleep-in-command = [
-						29 00 00 02 00 00
-						29 00 00 02 FA 5A
-						29 00 00 02 00 88
-						29 00 00 02 B0 01
-						13 0D 00 01 28
-						13 78 00 01 10
-					];
-					sprd,sleep-out-command = [13 78 00 01 11 13 32 00 01 29];
+
+					sprd,sleep-in-command = [05 0d 00 01 28 05 78 00 01 10];
+					sprd,sleep-out-command = [05 78 00 01 11 05 32 00 01 29];
 
 					display-timings {
-						native-mode = <&ft8201ab_bbk_H190_timing0>;
+						native-mode = <&timing_H190>;
 
-						ft8201ab_bbk_H190_timing0: timing0 {
-							clock-frequency = <192000000>; /* 0xb71b000 */
-							hactive = <1280>;   /* 0x500 */
-							vactive = <1752>;   /* 0x6d8 */
-							hback-porch = <122>;  /* 0x7a */
-							hfront-porch = <150>; /* 0x96 */
-							vback-porch = <20>;   /* 0x14 */
-							vfront-porch = <231>; /* 0xe7 */
-							hsync-len = <33>;  /* 0x21 */
-							vsync-len = <16>;  /* 0x10 */
+						timing_H190: timing0 {
+							clock-frequency = <192000000>;
+							hactive = <1200>;
+							vactive = <1920>;
+							hback-porch = <20>;
+							hfront-porch = <20>;
+							vback-porch = <12>;
+							vfront-porch = <12>;
+							hsync-len = <10>;
+							vsync-len = <4>;
 						};
 					};
 				};
